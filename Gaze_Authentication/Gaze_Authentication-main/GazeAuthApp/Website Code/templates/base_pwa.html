@@ -1,0 +1,440 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Gaze Authentication - Secure biometric login using eye tracking technology">
+    <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GazeAuth">
+
+    <title>{% block title %}Gaze Authentication{% endblock %}</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+
+    <!-- Favicon - using emoji as data URI since icon files don't exist -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👁️</text></svg>">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#667eea',
+                            600: '#5b5bd6',
+                            700: '#4f46e5',
+                            800: '#4338ca',
+                            900: '#3730a3',
+                        },
+                        secondary: {
+                            500: '#764ba2',
+                            600: '#6b4190',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'gradient': 'gradient 8s ease infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        gradient: {
+                            '0%, 100%': { backgroundPosition: '0% 50%' },
+                            '50%': { backgroundPosition: '100% 50%' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom gradient background */
+        .bg-gradient-main {
+            background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #1a1a2e);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        .bg-gradient-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* Glass morphism effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .glass-dark {
+            background: rgba(26, 26, 46, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Hide scrollbar but keep functionality */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Touch feedback for mobile */
+        .touch-feedback {
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-feedback:active {
+            transform: scale(0.98);
+        }
+
+        /* PWA install prompt */
+        .pwa-install-banner {
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .pwa-install-banner.show {
+            transform: translateY(0);
+        }
+
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Video container aspect ratio */
+        .video-container {
+            aspect-ratio: 4/3;
+        }
+
+        @media (max-width: 640px) {
+            .video-container {
+                aspect-ratio: 1/1;
+            }
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="h-full bg-gradient-main font-sans antialiased">
+    <!-- Mobile Navigation Overlay -->
+    <div id="mobile-menu-overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleMobileMenu()"></div>
+
+    <!-- Navigation -->
+    {% if user.is_authenticated %}
+    <nav class="fixed top-0 left-0 right-0 z-50 glass-dark border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="/" class="flex items-center space-x-2 touch-feedback">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-card flex items-center justify-center">
+                        <i class="fas fa-eye text-white text-lg"></i>
+                    </div>
+                    <span class="text-white font-semibold text-lg hidden sm:block">GazeAuth</span>
+                </a>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden lg:flex items-center space-x-1">
+                    <a href="/" class="px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 touch-feedback">
+                        <i class="fas fa-home mr-2"></i>Home
+                    </a>
+                    <a href="/dashboard/" class="px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 touch-feedback">
+                        <i class="fas fa-chart-line mr-2"></i>Dashboard
+                    </a>
+                    <a href="/gaze-calibration/" class="px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 touch-feedback">
+                        <i class="fas fa-crosshairs mr-2"></i>Calibrate
+                    </a>
+                    <a href="/gaze-enrollment/" class="px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 touch-feedback">
+                        <i class="fas fa-user-plus mr-2"></i>Enroll
+                    </a>
+                    <a href="/settings/" class="px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 touch-feedback">
+                        <i class="fas fa-cog mr-2"></i>Settings
+                    </a>
+                </div>
+
+                <!-- User Menu & Mobile Toggle -->
+                <div class="flex items-center space-x-3">
+                    <!-- User Avatar -->
+                    <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 bg-white/10 rounded-full">
+                        <div class="w-7 h-7 rounded-full bg-gradient-card flex items-center justify-center">
+                            <span class="text-white text-sm font-medium">{{ user.first_name|slice:":1"|default:user.username|slice:":1"|upper }}</span>
+                        </div>
+                        <span class="text-white/90 text-sm">{{ user.first_name|default:user.username }}</span>
+                    </div>
+
+                    <!-- Logout -->
+                    <a href="/logout/" class="hidden sm:flex px-4 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all duration-200 touch-feedback">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </a>
+
+                    <!-- Mobile Menu Toggle -->
+                    <button onclick="toggleMobileMenu()" class="lg:hidden p-2 text-white hover:bg-white/10 rounded-lg touch-feedback">
+                        <i class="fas fa-bars text-xl" id="menu-icon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Menu -->
+        <div id="mobile-menu" class="lg:hidden hidden bg-gray-900/95 border-t border-white/10">
+            <div class="px-4 py-4 space-y-2">
+                <a href="/" class="flex items-center px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-all touch-feedback">
+                    <i class="fas fa-home w-8 text-primary-400"></i>
+                    <span>Home</span>
+                </a>
+                <a href="/dashboard/" class="flex items-center px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-all touch-feedback">
+                    <i class="fas fa-chart-line w-8 text-primary-400"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/gaze-calibration/" class="flex items-center px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-all touch-feedback">
+                    <i class="fas fa-crosshairs w-8 text-primary-400"></i>
+                    <span>Calibrate</span>
+                </a>
+                <a href="/gaze-enrollment/" class="flex items-center px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-all touch-feedback">
+                    <i class="fas fa-user-plus w-8 text-primary-400"></i>
+                    <span>Enroll Gaze</span>
+                </a>
+                <a href="/gaze-tracker/" class="flex items-center px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-all touch-feedback">
+                    <i class="fas fa-eye w-8 text-primary-400"></i>
+                    <span>Test Tracker</span>
+                </a>
+                <a href="/settings/" class="flex items-center px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-all touch-feedback">
+                    <i class="fas fa-cog w-8 text-primary-400"></i>
+                    <span>Settings</span>
+                </a>
+                <hr class="border-white/10 my-2">
+                <a href="/logout/" class="flex items-center px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-all touch-feedback">
+                    <i class="fas fa-sign-out-alt w-8"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="{% if user.is_authenticated %}pt-16{% endif %} min-h-screen">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Bottom Navigation for Mobile (when authenticated) -->
+    {% if user.is_authenticated %}
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-50 glass-dark border-t border-white/10 safe-area-inset-bottom">
+        <div class="flex items-center justify-around py-2">
+            <a href="/" class="flex flex-col items-center py-2 px-4 text-white/60 hover:text-white transition-colors touch-feedback">
+                <i class="fas fa-home text-xl"></i>
+                <span class="text-xs mt-1">Home</span>
+            </a>
+            <a href="/dashboard/" class="flex flex-col items-center py-2 px-4 text-white/60 hover:text-white transition-colors touch-feedback">
+                <i class="fas fa-chart-line text-xl"></i>
+                <span class="text-xs mt-1">Dashboard</span>
+            </a>
+            <a href="/gaze-enrollment/" class="flex flex-col items-center py-2 px-4 touch-feedback">
+                <div class="w-12 h-12 -mt-6 rounded-full bg-gradient-card flex items-center justify-center shadow-lg">
+                    <i class="fas fa-eye text-white text-xl"></i>
+                </div>
+                <span class="text-xs mt-1 text-white/60">Enroll</span>
+            </a>
+            <a href="/settings/" class="flex flex-col items-center py-2 px-4 text-white/60 hover:text-white transition-colors touch-feedback">
+                <i class="fas fa-cog text-xl"></i>
+                <span class="text-xs mt-1">Settings</span>
+            </a>
+            <a href="/logout/" class="flex flex-col items-center py-2 px-4 text-white/60 hover:text-red-400 transition-colors touch-feedback">
+                <i class="fas fa-sign-out-alt text-xl"></i>
+                <span class="text-xs mt-1">Logout</span>
+            </a>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- PWA Install Banner -->
+    <div id="pwa-install-banner" class="pwa-install-banner fixed bottom-0 left-0 right-0 z-50 p-4 glass-dark border-t border-white/10 lg:hidden">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-xl bg-gradient-card flex items-center justify-center">
+                    <i class="fas fa-eye text-white text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-white font-medium">Install GazeAuth</p>
+                    <p class="text-white/60 text-sm">Add to home screen</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="dismissInstallBanner()" class="px-3 py-2 text-white/60 hover:text-white touch-feedback">
+                    Later
+                </button>
+                <button onclick="installPWA()" class="px-4 py-2 bg-gradient-card text-white rounded-lg touch-feedback">
+                    Install
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="fixed top-20 right-4 z-50 space-y-2"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center">
+        <div class="flex flex-col items-center">
+            <div class="w-12 h-12 spinner"></div>
+            <p class="text-white mt-4" id="loading-text">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            const overlay = document.getElementById('mobile-menu-overlay');
+            const icon = document.getElementById('menu-icon');
+
+            menu.classList.toggle('hidden');
+            overlay.classList.toggle('hidden');
+
+            if (menu.classList.contains('hidden')) {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            } else {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            }
+        }
+
+        // PWA Install
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // Show install banner after 30 seconds
+            setTimeout(() => {
+                if (deferredPrompt && !localStorage.getItem('pwa-install-dismissed')) {
+                    document.getElementById('pwa-install-banner').classList.add('show');
+                }
+            }, 30000);
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        showToast('App installed successfully!', 'success');
+                    }
+                    deferredPrompt = null;
+                    document.getElementById('pwa-install-banner').classList.remove('show');
+                });
+            }
+        }
+
+        function dismissInstallBanner() {
+            document.getElementById('pwa-install-banner').classList.remove('show');
+            localStorage.setItem('pwa-install-dismissed', 'true');
+        }
+
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const bgColors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500',
+                info: 'bg-blue-500'
+            };
+
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+
+            toast.className = `${bgColors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 transform translate-x-full transition-transform duration-300`;
+            toast.innerHTML = `
+                <i class="fas ${icons[type]}"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => toast.classList.remove('translate-x-full'), 10);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Loading overlay
+        function showLoading(text = 'Loading...') {
+            document.getElementById('loading-text').textContent = text;
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('loading-overlay').classList.add('flex');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.add('hidden');
+            document.getElementById('loading-overlay').classList.remove('flex');
+        }
+
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            });
+        }
+
+        // Handle online/offline status
+        window.addEventListener('online', () => showToast('You are back online', 'success'));
+        window.addEventListener('offline', () => showToast('You are offline', 'warning'));
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

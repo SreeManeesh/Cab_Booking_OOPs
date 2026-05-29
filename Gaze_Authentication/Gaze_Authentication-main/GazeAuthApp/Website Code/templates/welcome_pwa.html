@@ -1,0 +1,509 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Gaze Authentication - The future of secure login. No passwords to remember, no PINs to forget.">
+    <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GazeAuth">
+
+    <title>GazeAuth - Secure Login With Your Eyes</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👁️</text></svg>">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#667eea',
+                            600: '#5b5bd6',
+                            700: '#4f46e5',
+                            800: '#4338ca',
+                            900: '#3730a3',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 0.8s ease-out',
+                        'slide-up': 'slideUp 0.6s ease-out',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .glass-dark {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+        }
+        .feature-card {
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .eye-icon {
+            filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.5));
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 px-4 py-4">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                    <i class="fas fa-eye text-white text-lg"></i>
+                </div>
+                <span class="text-white font-bold text-xl">GazeAuth</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <a href="/login/" class="px-4 py-2 text-white/80 hover:text-white transition-colors font-medium">
+                    Sign In
+                </a>
+                <a href="/register/" class="btn-gradient px-5 py-2 rounded-full text-white font-medium shadow-lg">
+                    Get Started
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-32 pb-20 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex flex-col lg:flex-row items-center gap-12">
+                <!-- Left Content -->
+                <div class="flex-1 text-center lg:text-left animate-fade-in">
+                    <div class="inline-flex items-center px-4 py-2 rounded-full glass-dark mb-6">
+                        <span class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
+                        <span class="text-white/80 text-sm">Next-Gen Security</span>
+                    </div>
+
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+                        Secure Login<br>
+                        <span class="gradient-text">With Your Eyes</span>
+                    </h1>
+
+                    <p class="text-lg text-white/70 mb-8 max-w-xl">
+                        No passwords to remember. No PINs to forget. Just look at your camera
+                        and you're in. Experience the future of authentication.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                        <a href="/register/" class="btn-gradient px-8 py-4 rounded-xl text-white font-semibold text-lg shadow-xl flex items-center justify-center space-x-2">
+                            <span>Create Free Account</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                        <a href="/login/" class="px-8 py-4 rounded-xl text-white font-semibold text-lg border border-white/20 hover:bg-white/10 transition-all flex items-center justify-center space-x-2">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>Sign In</span>
+                        </a>
+                    </div>
+
+                    <!-- Trust Indicators -->
+                    <div class="mt-10 flex items-center gap-6 justify-center lg:justify-start text-white/50 text-sm">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-shield-alt text-green-400"></i>
+                            <span>Bank-Level Security</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-lock text-green-400"></i>
+                            <span>Privacy First</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Visual -->
+                <div class="flex-1 flex justify-center animate-slide-up">
+                    <div class="relative">
+                        <!-- Glowing background -->
+                        <div class="absolute inset-0 bg-gradient-to-br from-primary-500/30 to-purple-600/30 rounded-full blur-3xl"></div>
+
+                        <!-- Main visual -->
+                        <div class="relative w-72 h-72 sm:w-80 sm:h-80 rounded-full glass-dark flex items-center justify-center animate-float">
+                            <div class="w-56 h-56 sm:w-64 sm:h-64 rounded-full bg-gradient-to-br from-primary-500/20 to-purple-600/20 flex items-center justify-center">
+                                <div class="w-40 h-40 sm:w-48 sm:h-48 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center shadow-2xl">
+                                    <i class="fas fa-eye text-white text-6xl sm:text-7xl eye-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Floating badges -->
+                        <div class="absolute -top-4 -right-4 glass px-4 py-2 rounded-full shadow-lg animate-float" style="animation-delay: 0.5s;">
+                            <span class="text-primary-600 font-semibold text-sm">
+                                <i class="fas fa-check-circle mr-1"></i> Verified
+                            </span>
+                        </div>
+                        <div class="absolute -bottom-4 -left-4 glass px-4 py-2 rounded-full shadow-lg animate-float" style="animation-delay: 1s;">
+                            <span class="text-green-600 font-semibold text-sm">
+                                <i class="fas fa-bolt mr-1"></i> Instant
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-20 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-bold text-white mb-4">
+                    Why Choose GazeAuth?
+                </h2>
+                <p class="text-white/60 max-w-2xl mx-auto">
+                    Traditional passwords are outdated. Discover a smarter, safer way to protect your accounts.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="feature-card glass-dark rounded-2xl p-8 text-center">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                        <i class="fas fa-user-shield text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Shoulder-Surf Proof</h3>
+                    <p class="text-white/60">
+                        No one can steal your password by watching you type - because there's nothing to see.
+                    </p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="feature-card glass-dark rounded-2xl p-8 text-center">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                        <i class="fas fa-fingerprint text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Uniquely You</h3>
+                    <p class="text-white/60">
+                        Your eyes are as unique as your fingerprint. No two people have the same pattern.
+                    </p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="feature-card glass-dark rounded-2xl p-8 text-center">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                        <i class="fas fa-bolt text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Lightning Fast</h3>
+                    <p class="text-white/60">
+                        Authenticate in under 3 seconds. Just look at your camera and you're done.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="py-20 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-bold text-white mb-4">
+                    How It Works
+                </h2>
+                <p class="text-white/60 max-w-2xl mx-auto">
+                    Getting started is simple. Three easy steps to passwordless security.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Step 1 -->
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+                        1
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Create Account</h3>
+                    <p class="text-white/60">
+                        Sign up with your email and set up your profile in seconds.
+                    </p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+                        2
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Enroll Your Gaze</h3>
+                    <p class="text-white/60">
+                        Look at your camera for a few moments. We'll learn your unique pattern.
+                    </p>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+                        3
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Login With Your Eyes</h3>
+                    <p class="text-white/60">
+                        From now on, just look at your camera to sign in. It's that simple.
+                    </p>
+                </div>
+            </div>
+
+            <!-- CTA -->
+            <div class="text-center mt-16">
+                <a href="/register/" class="btn-gradient px-10 py-4 rounded-xl text-white font-semibold text-lg shadow-xl inline-flex items-center space-x-2">
+                    <span>Start Free Today</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Section -->
+    <section class="py-20 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="glass-dark rounded-3xl p-8 sm:p-12">
+                <div class="flex flex-col md:flex-row items-center gap-8">
+                    <div class="flex-shrink-0">
+                        <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                            <i class="fas fa-shield-alt text-white text-4xl"></i>
+                        </div>
+                    </div>
+                    <div class="text-center md:text-left">
+                        <h3 class="text-2xl font-bold text-white mb-3">Your Privacy Matters</h3>
+                        <p class="text-white/60 mb-4">
+                            Your data stays on our secure servers. We never share your information
+                            with third parties. Your gaze pattern is encrypted and protected with
+                            industry-leading security standards.
+                        </p>
+                        <div class="flex flex-wrap gap-4 justify-center md:justify-start">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm">
+                                <i class="fas fa-check mr-2"></i> End-to-End Encrypted
+                            </span>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm">
+                                <i class="fas fa-check mr-2"></i> HTTPS Secured
+                            </span>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm">
+                                <i class="fas fa-check mr-2"></i> No Data Sharing
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Project Section -->
+    <section class="py-20 px-4" id="about">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl font-bold text-white mb-4">
+                    About The Project
+                </h2>
+                <p class="text-white/60 max-w-2xl mx-auto">
+                    An academic research project focused on enhancing digital security through innovative authentication methods.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Institution Card -->
+                <div class="glass-dark rounded-2xl p-8">
+                    <div class="flex items-start space-x-4 mb-6">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-university text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-1">Institution</h3>
+                            <p class="text-white/60 text-sm">Academic Research Project</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="border-l-2 border-primary-500 pl-4">
+                            <p class="text-white font-semibold">Aditya College of Engineering and Technology</p>
+                            <p class="text-white/60 text-sm">Surampalem, Andhra Pradesh</p>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-primary-500/20 text-primary-300 text-sm">
+                                <i class="fas fa-laptop-code mr-2"></i> CSE-AIML
+                            </span>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-sm">
+                                <i class="fas fa-users mr-2"></i> Batch E4
+                            </span>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-green-500/20 text-green-300 text-sm">
+                                <i class="fas fa-calendar mr-2"></i> 2024-25
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Card -->
+                <div class="glass-dark rounded-2xl p-8">
+                    <div class="flex items-start space-x-4 mb-6">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-user-graduate text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-1">Project Team</h3>
+                            <p class="text-white/60 text-sm">Student Researchers</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-6">
+                        <div class="glass-dark rounded-lg px-3 py-2 text-center">
+                            <p class="text-white font-medium text-sm">22MH1A42F2</p>
+                        </div>
+                        <div class="glass-dark rounded-lg px-3 py-2 text-center">
+                            <p class="text-white font-medium text-sm">22MH1A42I4</p>
+                        </div>
+                        <div class="glass-dark rounded-lg px-3 py-2 text-center">
+                            <p class="text-white font-medium text-sm">23MH5A4214</p>
+                        </div>
+                        <div class="glass-dark rounded-lg px-3 py-2 text-center">
+                            <p class="text-white font-medium text-sm">23MH5A4216</p>
+                        </div>
+                    </div>
+                    <div class="border-t border-white/10 pt-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                                <i class="fas fa-chalkboard-teacher text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-white/60 text-xs">Project Supervisor</p>
+                                <p class="text-white font-semibold">Mr. Swapna Babu</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project Highlights -->
+            <div class="mt-12 glass-dark rounded-2xl p-8">
+                <h3 class="text-xl font-bold text-white mb-6 text-center">Project Highlights</h3>
+                <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-500/20 flex items-center justify-center">
+                            <i class="fas fa-shield-virus text-blue-400 text-lg"></i>
+                        </div>
+                        <h4 class="text-white font-semibold mb-1">Anti-Shoulder Surfing</h4>
+                        <p class="text-white/50 text-sm">Protection against visual hacking</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-purple-500/20 flex items-center justify-center">
+                            <i class="fas fa-brain text-purple-400 text-lg"></i>
+                        </div>
+                        <h4 class="text-white font-semibold mb-1">Biometric Analysis</h4>
+                        <p class="text-white/50 text-sm">Unique eye characteristics</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-green-500/20 flex items-center justify-center">
+                            <i class="fas fa-mobile-alt text-green-400 text-lg"></i>
+                        </div>
+                        <h4 class="text-white font-semibold mb-1">Progressive Web App</h4>
+                        <p class="text-white/50 text-sm">Works on any device</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-orange-500/20 flex items-center justify-center">
+                            <i class="fas fa-user-lock text-orange-400 text-lg"></i>
+                        </div>
+                        <h4 class="text-white font-semibold mb-1">Two-Factor Security</h4>
+                        <p class="text-white/50 text-sm">Password + gaze verification</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 px-4 border-t border-white/10">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                        <i class="fas fa-eye text-white text-sm"></i>
+                    </div>
+                    <span class="text-white font-bold">GazeAuth</span>
+                </div>
+
+                <div class="flex items-center space-x-6 text-white/50 text-sm">
+                    <a href="#about" class="hover:text-white transition-colors">About</a>
+                    <a href="/login/" class="hover:text-white transition-colors">Sign In</a>
+                    <a href="/register/" class="hover:text-white transition-colors">Register</a>
+                </div>
+
+                <div class="text-white/40 text-sm">
+                    &copy; 2025 Aditya College of Engineering and Technology
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('{% static "sw.js" %}')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed'));
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+{% extends 'base_pwa.html' %}
+{% load static %}
+
+{% block title %}Home - Gaze Authentication{% endblock %}
+
+{% block content %}
+<div class="min-h-screen pb-20 lg:pb-8">
+    <!-- Hero Section -->
+    <div class="px-4 sm:px-6 lg:px-8 pt-6 pb-8">
+        <div class="max-w-7xl mx-auto">
+            <!-- Welcome Card -->
+            <div class="glass rounded-2xl p-6 sm:p-8 mb-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">
+                            Welcome, {{ user.first_name|default:user.username }}! 👋
+                        </h1>
+                        <p class="text-gray-500 mt-1">Ready to secure your account with gaze authentication?</p>
+                    </div>
+                    <div class="mt-4 sm:mt-0">
+                        <a href="/gaze-enrollment/" class="inline-flex items-center px-6 py-3 bg-gradient-card text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all touch-feedback">
+                            <i class="fas fa-eye mr-2"></i>
+                            Get Started
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="glass rounded-xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-xl {% if gaze_profile.is_enrolled %}bg-green-100{% else %}bg-yellow-100{% endif %} flex items-center justify-center">
+                            <i class="fas {% if gaze_profile.is_enrolled %}fa-check text-green-500{% else %}fa-clock text-yellow-500{% endif %} text-xl"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-500 text-sm mt-3">Enrollment</p>
+                    <p class="text-gray-800 font-semibold">{% if gaze_profile.is_enrolled %}Complete{% else %}Pending{% endif %}</p>
+                </div>
+
+                <div class="glass rounded-xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center">
+                            <i class="fas fa-database text-primary-500 text-xl"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-500 text-sm mt-3">Samples</p>
+                    <p class="text-gray-800 font-semibold">{{ gaze_profile.enrollment_samples|default:0 }} / 5</p>
+                </div>
+
+                <div class="glass rounded-xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+                            <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-500 text-sm mt-3">Successful</p>
+                    <p class="text-gray-800 font-semibold">{{ stats.successful_auths|default:0 }}</p>
+                </div>
+
+                <div class="glass rounded-xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
+                            <i class="fas fa-times-circle text-red-500 text-xl"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-500 text-sm mt-3">Failed</p>
+                    <p class="text-gray-800 font-semibold">{{ stats.failed_auths|default:0 }}</p>
+                </div>
+            </div>
+
+            <!-- Alert Banner -->
+            {% if not gaze_profile.is_enrolled %}
+            <div class="glass rounded-xl p-4 mb-6 border-l-4 border-yellow-400 bg-yellow-50">
+                <div class="flex items-start space-x-3">
+                    <i class="fas fa-exclamation-triangle text-yellow-500 text-xl mt-0.5"></i>
+                    <div>
+                        <h4 class="font-semibold text-gray-800">Complete Your Setup</h4>
+                        <p class="text-gray-600 text-sm mt-1">
+                            You haven't enrolled your gaze profile yet.
+                            <a href="/gaze-enrollment/" class="text-primary-500 font-medium hover:underline">Enroll now</a> to enable secure gaze authentication.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Quick Actions -->
+            <div class="glass rounded-2xl p-6 mb-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <a href="/gaze-calibration/" class="flex flex-col items-center p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl text-white hover:shadow-lg transform hover:-translate-y-1 transition-all touch-feedback">
+                        <i class="fas fa-crosshairs text-2xl mb-2"></i>
+                        <span class="text-sm font-medium">Calibrate</span>
+                    </a>
+                    <a href="/gaze-enrollment/" class="flex flex-col items-center p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white hover:shadow-lg transform hover:-translate-y-1 transition-all touch-feedback">
+                        <i class="fas fa-user-plus text-2xl mb-2"></i>
+                        <span class="text-sm font-medium">Enroll</span>
+                    </a>
+                    <a href="/gaze-tracker/" class="flex flex-col items-center p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-xl text-white hover:shadow-lg transform hover:-translate-y-1 transition-all touch-feedback">
+                        <i class="fas fa-eye text-2xl mb-2"></i>
+                        <span class="text-sm font-medium">Test</span>
+                    </a>
+                    <a href="/dashboard/" class="flex flex-col items-center p-4 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl text-white hover:shadow-lg transform hover:-translate-y-1 transition-all touch-feedback">
+                        <i class="fas fa-chart-line text-2xl mb-2"></i>
+                        <span class="text-sm font-medium">Dashboard</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- How It Works -->
+            <div class="glass rounded-2xl p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-6">How Gaze Authentication Works</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <i class="fas fa-camera text-white text-2xl"></i>
+                        </div>
+                        <h4 class="font-semibold text-gray-800 mb-2">1. Eye Detection</h4>
+                        <p class="text-gray-500 text-sm">Our system detects and tracks your eyes using your webcam</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-400 to-purple-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <i class="fas fa-chart-area text-white text-2xl"></i>
+                        </div>
+                        <h4 class="font-semibold text-gray-800 mb-2">2. Feature Extraction</h4>
+                        <p class="text-gray-500 text-sm">We extract unique features like fixations and blink patterns</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-400 to-pink-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <i class="fas fa-fingerprint text-white text-2xl"></i>
+                        </div>
+                        <h4 class="font-semibold text-gray-800 mb-2">3. Gaze Signature</h4>
+                        <p class="text-gray-500 text-sm">Your unique gaze signature is generated and stored securely</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <i class="fas fa-shield-alt text-white text-2xl"></i>
+                        </div>
+                        <h4 class="font-semibold text-gray-800 mb-2">4. Secure Login</h4>
+                        <p class="text-gray-500 text-sm">Authenticate securely without fear of shoulder surfing</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

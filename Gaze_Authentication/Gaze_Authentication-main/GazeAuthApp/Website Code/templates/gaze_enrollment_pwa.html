@@ -1,0 +1,681 @@
+{% extends 'base_pwa.html' %}
+{% load static %}
+
+{% block title %}Gaze Enrollment - Gaze Authentication{% endblock %}
+
+{% block content %}
+<div class="min-h-screen pb-20 lg:pb-8">
+    <div class="px-4 sm:px-6 lg:px-8 pt-6 pb-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header -->
+            <div class="mb-6">
+                <div class="flex items-center space-x-3 mb-2">
+                    <a href="/" class="text-white/60 hover:text-white">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-white">Gaze Enrollment</h1>
+                </div>
+                <p class="text-white/60">Train the system to recognize your unique gaze pattern</p>
+            </div>
+
+            <!-- Main Content -->
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Left: Camera & Controls -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Camera Card -->
+                    <div class="glass rounded-2xl p-6">
+                        <div class="relative aspect-video bg-gray-900 rounded-xl overflow-hidden mb-4">
+                            <video id="webcam" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                            <canvas id="overlay" class="absolute inset-0 w-full h-full"></canvas>
+
+                            <!-- Status Overlay -->
+                            <div id="status-overlay" class="absolute inset-0 flex items-center justify-center bg-black/50 hidden">
+                                <div class="text-center text-white">
+                                    <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                                    <p id="status-text" class="text-lg">Initializing camera...</p>
+                                </div>
+                            </div>
+
+                            <!-- No Face Warning -->
+                            <div id="no-face-warning" class="absolute top-4 left-4 right-4 hidden">
+                                <div class="bg-yellow-500/90 text-white text-sm px-4 py-2 rounded-lg flex items-center space-x-2">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>No face detected. Please position your face in the frame.</span>
+                                </div>
+                            </div>
+
+                            <!-- Recording Indicator -->
+                            <div id="recording-indicator" class="absolute top-4 right-4 hidden">
+                                <div class="bg-red-500 text-white text-sm px-3 py-1 rounded-full flex items-center space-x-2 animate-pulse">
+                                    <div class="w-2 h-2 bg-white rounded-full"></div>
+                                    <span>Recording</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Controls -->
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button id="start-btn" onclick="startEnrollment()" class="flex-1 py-3 px-6 bg-gradient-card text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all touch-feedback flex items-center justify-center space-x-2">
+                                <i class="fas fa-play"></i>
+                                <span>Start Enrollment</span>
+                            </button>
+                            <button id="retry-btn" onclick="retryEnrollment()" class="flex-1 py-3 px-6 bg-gray-600 text-white font-semibold rounded-xl hover:bg-gray-700 transition-all touch-feedback flex items-center justify-center space-x-2 hidden">
+                                <i class="fas fa-redo"></i>
+                                <span>Retry</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Instructions Card -->
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Instructions</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-start space-x-3">
+                                <div class="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-primary-500 text-sm font-bold">1</span>
+                                </div>
+                                <p class="text-gray-600">Position your face clearly in the camera frame</p>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-primary-500 text-sm font-bold">2</span>
+                                </div>
+                                <p class="text-gray-600">Look naturally at the screen during recording</p>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-primary-500 text-sm font-bold">3</span>
+                                </div>
+                                <p class="text-gray-600">Blink naturally - we track your blink patterns</p>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-primary-500 text-sm font-bold">4</span>
+                                </div>
+                                <p class="text-gray-600">Complete 5 samples for accurate enrollment</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Progress Panel -->
+                <div class="space-y-6">
+                    <!-- Progress Card -->
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Enrollment Progress</h3>
+
+                        <!-- Sample Progress -->
+                        <div class="mb-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-gray-600">Samples</span>
+                                <span id="sample-count" class="font-bold text-gray-800">0 / 5</span>
+                            </div>
+                            <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
+                                <div id="sample-progress" class="h-full bg-gradient-card rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Sample Dots -->
+                        <div class="grid grid-cols-5 gap-2 mb-6">
+                            <div id="sample-1" class="aspect-square rounded-lg bg-gray-200 flex items-center justify-center">
+                                <i class="fas fa-circle text-gray-400 text-xs"></i>
+                            </div>
+                            <div id="sample-2" class="aspect-square rounded-lg bg-gray-200 flex items-center justify-center">
+                                <i class="fas fa-circle text-gray-400 text-xs"></i>
+                            </div>
+                            <div id="sample-3" class="aspect-square rounded-lg bg-gray-200 flex items-center justify-center">
+                                <i class="fas fa-circle text-gray-400 text-xs"></i>
+                            </div>
+                            <div id="sample-4" class="aspect-square rounded-lg bg-gray-200 flex items-center justify-center">
+                                <i class="fas fa-circle text-gray-400 text-xs"></i>
+                            </div>
+                            <div id="sample-5" class="aspect-square rounded-lg bg-gray-200 flex items-center justify-center">
+                                <i class="fas fa-circle text-gray-400 text-xs"></i>
+                            </div>
+                        </div>
+
+                        <!-- Current Sample Timer -->
+                        <div id="timer-section" class="hidden">
+                            <div class="text-center py-4">
+                                <p class="text-gray-500 text-sm mb-1">Recording sample</p>
+                                <div id="timer" class="text-4xl font-bold text-primary-500">5s</div>
+                                <div class="mt-2 h-1 bg-gray-200 rounded-full overflow-hidden">
+                                    <div id="timer-bar" class="h-full bg-primary-500 transition-all duration-100" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Card (Shows complexity to user) -->
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Live Stats</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-500">Face Detected</span>
+                                <span id="face-status" class="font-medium text-red-500">No</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-500">Blinks</span>
+                                <span id="blink-count" class="font-medium text-gray-800">0</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-500">Fixations</span>
+                                <span id="fixation-count" class="font-medium text-gray-800">0</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-500">Saccades</span>
+                                <span id="saccade-count" class="font-medium text-gray-800">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Help Card -->
+                    <div class="glass rounded-2xl p-6 bg-primary-50/50 border border-primary-100">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-lightbulb text-primary-500"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800">Pro Tip</h4>
+                                <p class="text-gray-600 text-sm mt-1">
+                                    For best results, ensure good lighting and keep your head relatively still while your eyes move naturally.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="success-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="absolute inset-0 bg-black/50" onclick="closeSuccessModal()"></div>
+    <div class="relative glass rounded-2xl p-8 max-w-md w-full text-center">
+        <div class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+            <i class="fas fa-check text-green-500 text-4xl"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-800 mb-2">Enrollment Complete!</h3>
+        <p class="text-gray-600 mb-6">Your gaze profile has been successfully created. You can now use gaze authentication for secure login.</p>
+        <div class="flex flex-col sm:flex-row gap-3">
+            <a href="/settings/" class="flex-1 py-3 px-6 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all touch-feedback">
+                Go to Settings
+            </a>
+            <a href="/" class="flex-1 py-3 px-6 bg-gradient-card text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all touch-feedback">
+                Go to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script>
+    // MediaPipe Face Mesh
+    let faceMesh;
+    let camera;
+    let isRecording = false;
+    let currentSample = 0;
+    let frameCount = 0;
+    let features = [];
+
+    // Stats
+    let blinkCount = 0;
+    let fixationCount = 0;
+    let saccadeCount = 0;
+    let lastEAR = 1.0;
+    let blinkThreshold = 0.25;
+    let eyeWasClosed = false;
+
+    // Gaze tracking
+    let gazeHistory = [];
+    let lastGazeTime = 0;
+    let fixationStartTime = 0;
+    let isFixating = false;
+
+    async function initMediaPipe() {
+        const statusOverlay = document.getElementById('status-overlay');
+        const statusText = document.getElementById('status-text');
+
+        statusOverlay.classList.remove('hidden');
+        statusText.textContent = 'Loading AI models...';
+
+        faceMesh = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults(onResults);
+
+        const video = document.getElementById('webcam');
+
+        statusText.textContent = 'Accessing camera...';
+
+        camera = new Camera(video, {
+            onFrame: async () => {
+                await faceMesh.send({image: video});
+            },
+            width: 640,
+            height: 480
+        });
+
+        await camera.start();
+        statusOverlay.classList.add('hidden');
+    }
+
+    function calculateEAR(landmarks, eyeIndices) {
+        const p1 = landmarks[eyeIndices[0]];
+        const p2 = landmarks[eyeIndices[1]];
+        const p3 = landmarks[eyeIndices[2]];
+        const p4 = landmarks[eyeIndices[3]];
+        const p5 = landmarks[eyeIndices[4]];
+        const p6 = landmarks[eyeIndices[5]];
+
+        const vertical1 = Math.sqrt(Math.pow(p2.x - p6.x, 2) + Math.pow(p2.y - p6.y, 2));
+        const vertical2 = Math.sqrt(Math.pow(p3.x - p5.x, 2) + Math.pow(p3.y - p5.y, 2));
+        const horizontal = Math.sqrt(Math.pow(p1.x - p4.x, 2) + Math.pow(p1.y - p4.y, 2));
+
+        return (vertical1 + vertical2) / (2.0 * horizontal);
+    }
+
+    function getIrisCenter(landmarks, irisIndices) {
+        let x = 0, y = 0;
+        for (const idx of irisIndices) {
+            x += landmarks[idx].x;
+            y += landmarks[idx].y;
+        }
+        return { x: x / irisIndices.length, y: y / irisIndices.length };
+    }
+
+    function onResults(results) {
+        const canvas = document.getElementById('overlay');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 640;
+        canvas.height = 480;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const noFaceWarning = document.getElementById('no-face-warning');
+        const faceStatus = document.getElementById('face-status');
+
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            noFaceWarning.classList.add('hidden');
+            faceStatus.textContent = 'Yes';
+            faceStatus.className = 'font-medium text-green-500';
+
+            const landmarks = results.multiFaceLandmarks[0];
+
+            // Draw face mesh
+            ctx.strokeStyle = 'rgba(0, 200, 255, 0.3)';
+            ctx.lineWidth = 1;
+
+            // Draw eyes
+            const leftEyeIndices = [33, 160, 158, 133, 153, 144];
+            const rightEyeIndices = [362, 385, 387, 263, 373, 380];
+
+            drawEyeContour(ctx, landmarks, leftEyeIndices);
+            drawEyeContour(ctx, landmarks, rightEyeIndices);
+
+            // Calculate EAR for blink detection
+            const leftEAR = calculateEAR(landmarks, leftEyeIndices);
+            const rightEAR = calculateEAR(landmarks, rightEyeIndices);
+            const ear = (leftEAR + rightEAR) / 2;
+
+            if (ear < blinkThreshold && !eyeWasClosed) {
+                eyeWasClosed = true;
+            } else if (ear >= blinkThreshold && eyeWasClosed) {
+                eyeWasClosed = false;
+                blinkCount++;
+                document.getElementById('blink-count').textContent = blinkCount;
+            }
+
+            // Iris tracking
+            const leftIris = getIrisCenter(landmarks, [468, 469, 470, 471, 472]);
+            const rightIris = getIrisCenter(landmarks, [473, 474, 475, 476, 477]);
+
+            // Draw iris points
+            ctx.fillStyle = '#00ff00';
+            ctx.beginPath();
+            ctx.arc(leftIris.x * canvas.width, leftIris.y * canvas.height, 4, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(rightIris.x * canvas.width, rightIris.y * canvas.height, 4, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Track gaze for fixation/saccade detection
+            const now = Date.now();
+            const gazePoint = {
+                x: (leftIris.x + rightIris.x) / 2,
+                y: (leftIris.y + rightIris.y) / 2,
+                time: now
+            };
+
+            gazeHistory.push(gazePoint);
+            if (gazeHistory.length > 30) gazeHistory.shift();
+
+            // Fixation detection (I-DT algorithm)
+            if (gazeHistory.length >= 5) {
+                const recent = gazeHistory.slice(-5);
+                const dispersion = calculateDispersion(recent);
+
+                if (dispersion < 0.02) { // Low dispersion = fixation
+                    if (!isFixating) {
+                        isFixating = true;
+                        fixationStartTime = now;
+                    }
+                } else {
+                    if (isFixating && (now - fixationStartTime > 100)) {
+                        fixationCount++;
+                        document.getElementById('fixation-count').textContent = fixationCount;
+                    }
+                    isFixating = false;
+                }
+
+                // Saccade detection (velocity-based)
+                if (gazeHistory.length >= 2) {
+                    const prev = gazeHistory[gazeHistory.length - 2];
+                    const velocity = calculateVelocity(prev, gazePoint);
+                    if (velocity > 0.3) { // High velocity = saccade
+                        saccadeCount++;
+                        document.getElementById('saccade-count').textContent = saccadeCount;
+                    }
+                }
+            }
+
+            // Collect features if recording
+            if (isRecording) {
+                frameCount++;
+                features.push({
+                    ear: ear,
+                    leftEar: leftEAR,
+                    rightEar: rightEAR,
+                    leftIris: leftIris,
+                    rightIris: rightIris,
+                    gazePoint: gazePoint,
+                    timestamp: now
+                });
+            }
+        } else {
+            noFaceWarning.classList.remove('hidden');
+            faceStatus.textContent = 'No';
+            faceStatus.className = 'font-medium text-red-500';
+        }
+    }
+
+    function drawEyeContour(ctx, landmarks, indices) {
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < indices.length; i++) {
+            const point = landmarks[indices[i]];
+            const x = point.x * 640;
+            const y = point.y * 480;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    }
+
+    function calculateDispersion(points) {
+        if (points.length < 2) return 0;
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const p of points) {
+            minX = Math.min(minX, p.x);
+            maxX = Math.max(maxX, p.x);
+            minY = Math.min(minY, p.y);
+            maxY = Math.max(maxY, p.y);
+        }
+        return Math.max(maxX - minX, maxY - minY);
+    }
+
+    function calculateVelocity(p1, p2) {
+        const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        const time = (p2.time - p1.time) / 1000;
+        return time > 0 ? dist / time : 0;
+    }
+
+    async function startEnrollment() {
+        if (currentSample >= 5) {
+            showToast('Enrollment already complete!', 'info');
+            return;
+        }
+
+        currentSample++;
+        isRecording = true;
+        frameCount = 0;
+        features = [];
+        blinkCount = 0;
+        fixationCount = 0;
+        saccadeCount = 0;
+
+        document.getElementById('recording-indicator').classList.remove('hidden');
+        document.getElementById('timer-section').classList.remove('hidden');
+        document.getElementById('start-btn').disabled = true;
+        document.getElementById('start-btn').classList.add('opacity-50');
+
+        // Update sample indicator
+        const sampleEl = document.getElementById(`sample-${currentSample}`);
+        sampleEl.classList.remove('bg-gray-200');
+        sampleEl.classList.add('bg-yellow-400');
+        sampleEl.innerHTML = '<i class="fas fa-spinner fa-spin text-white text-xs"></i>';
+
+        // 5 second countdown (~150 frames at 30fps)
+        let timeLeft = 5;
+        const timerEl = document.getElementById('timer');
+        const timerBar = document.getElementById('timer-bar');
+
+        const interval = setInterval(() => {
+            timeLeft--;
+            timerEl.textContent = `${timeLeft}s`;
+            timerBar.style.width = `${(timeLeft / 5) * 100}%`;
+
+            if (timeLeft <= 0) {
+                clearInterval(interval);
+                finishSample();
+            }
+        }, 1000);
+    }
+
+    async function finishSample() {
+        isRecording = false;
+        document.getElementById('recording-indicator').classList.add('hidden');
+        document.getElementById('timer-section').classList.add('hidden');
+
+        // Calculate aggregate features for this sample
+        const aggregateFeatures = calculateAggregateFeatures(features);
+
+        // Update sample indicator to complete
+        const sampleEl = document.getElementById(`sample-${currentSample}`);
+        sampleEl.classList.remove('bg-yellow-400');
+        sampleEl.classList.add('bg-green-500');
+        sampleEl.innerHTML = '<i class="fas fa-check text-white text-xs"></i>';
+
+        // Update progress
+        document.getElementById('sample-count').textContent = `${currentSample} / 5`;
+        document.getElementById('sample-progress').style.width = `${(currentSample / 5) * 100}%`;
+
+        // Submit to server
+        try {
+            const response = await fetch('/api/gaze-enrollment/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    sample_number: currentSample,
+                    features: aggregateFeatures
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showToast(`Sample ${currentSample} recorded!`, 'success');
+
+                if (data.is_enrolled) {
+                    document.getElementById('success-modal').classList.remove('hidden');
+                } else {
+                    document.getElementById('start-btn').disabled = false;
+                    document.getElementById('start-btn').classList.remove('opacity-50');
+                    document.getElementById('start-btn').innerHTML = '<i class="fas fa-play"></i><span>Record Sample ' + (currentSample + 1) + '</span>';
+                }
+            } else {
+                showToast('Error saving sample: ' + data.error, 'error');
+            }
+        } catch (error) {
+            showToast('Network error: ' + error.message, 'error');
+        }
+    }
+
+    function calculateAggregateFeatures(frameFeatures) {
+        if (frameFeatures.length === 0) return {};
+
+        const ears = frameFeatures.map(f => f.ear);
+
+        // ========== BIOMETRIC CONSTANTS (Cannot be faked!) ==========
+
+        // 1. Inter-Pupillary Distance (IPD) - Distance between eye centers
+        // This is UNIQUE to each person - your sister has different IPD!
+        const ipds = frameFeatures.map(f => {
+            const leftX = f.leftIris.x;
+            const leftY = f.leftIris.y;
+            const rightX = f.rightIris.x;
+            const rightY = f.rightIris.y;
+            return Math.sqrt(Math.pow(rightX - leftX, 2) + Math.pow(rightY - leftY, 2));
+        });
+
+        // 2. Eye Aspect Ratio (EAR) - Natural eye opening percentage
+        // Each person has characteristic eye opening
+        const validEars = ears.filter(e => e > 0.15 && e < 0.45); // Filter out blinks
+
+        // 3. Eye symmetry ratio - How symmetric are the eyes
+        const leftEars = frameFeatures.map(f => f.leftEar || f.ear);
+        const rightEars = frameFeatures.map(f => f.rightEar || f.ear);
+        const eyeSymmetry = leftEars.map((l, i) => Math.min(l, rightEars[i]) / Math.max(l, rightEars[i]));
+
+        // ========== BEHAVIORAL FEATURES (Subconscious patterns) ==========
+
+        // Saccade velocities
+        const velocities = [];
+        for (let i = 1; i < frameFeatures.length; i++) {
+            const prev = frameFeatures[i-1];
+            const curr = frameFeatures[i];
+            const dt = (curr.timestamp - prev.timestamp) / 1000;
+            if (dt > 0) {
+                const dist = Math.sqrt(
+                    Math.pow(curr.gazePoint.x - prev.gazePoint.x, 2) +
+                    Math.pow(curr.gazePoint.y - prev.gazePoint.y, 2)
+                );
+                velocities.push(dist / dt);
+            }
+        }
+
+        const saccadeVelocities = velocities.filter(v => v > 0.3);
+
+        return {
+            // ===== PRIMARY BIOMETRIC (Highest weight - physical constants) =====
+            ipd_mean: average(ipds),                    // Inter-pupillary distance
+            ipd_std: standardDeviation(ipds),           // Should be very low (stable)
+
+            ear_baseline: average(validEars),           // Natural eye opening
+            ear_std: standardDeviation(validEars),      // Stability of eye opening
+
+            eye_symmetry: average(eyeSymmetry),         // Left-right eye symmetry
+
+            // ===== SECONDARY BIOMETRIC (Behavioral - subconscious) =====
+            saccade_velocity_mean: saccadeVelocities.length > 0 ? average(saccadeVelocities) : 0,
+            saccade_velocity_std: saccadeVelocities.length > 0 ? standardDeviation(saccadeVelocities) : 0,
+
+            blink_count: blinkCount,
+
+            // ===== METADATA =====
+            frame_count: frameFeatures.length,
+            duration_ms: frameFeatures[frameFeatures.length - 1].timestamp - frameFeatures[0].timestamp
+        };
+    }
+
+    function extractVelocityProfile(velocities, profileSize) {
+        // Extract a normalized velocity profile - unique like a fingerprint
+        if (velocities.length === 0) return new Array(profileSize).fill(0);
+
+        const profile = [];
+        const step = Math.max(1, Math.floor(velocities.length / profileSize));
+
+        for (let i = 0; i < profileSize; i++) {
+            const start = i * step;
+            const end = Math.min(start + step, velocities.length);
+            const chunk = velocities.slice(start, end);
+            profile.push(chunk.length > 0 ? average(chunk) : 0);
+        }
+
+        // Normalize to 0-1 range
+        const maxV = Math.max(...profile, 0.001);
+        return profile.map(v => v / maxV);
+    }
+
+    function average(arr) {
+        return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    function standardDeviation(arr) {
+        const avg = average(arr);
+        const squareDiffs = arr.map(value => Math.pow(value - avg, 2));
+        return Math.sqrt(average(squareDiffs));
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function retryEnrollment() {
+        currentSample = 0;
+        blinkCount = 0;
+        fixationCount = 0;
+        saccadeCount = 0;
+
+        for (let i = 1; i <= 5; i++) {
+            const el = document.getElementById(`sample-${i}`);
+            el.classList.remove('bg-green-500', 'bg-yellow-400');
+            el.classList.add('bg-gray-200');
+            el.innerHTML = '<i class="fas fa-circle text-gray-400 text-xs"></i>';
+        }
+
+        document.getElementById('sample-count').textContent = '0 / 5';
+        document.getElementById('sample-progress').style.width = '0%';
+        document.getElementById('blink-count').textContent = '0';
+        document.getElementById('fixation-count').textContent = '0';
+        document.getElementById('saccade-count').textContent = '0';
+
+        document.getElementById('start-btn').classList.remove('hidden');
+        document.getElementById('retry-btn').classList.add('hidden');
+    }
+
+    function closeSuccessModal() {
+        document.getElementById('success-modal').classList.add('hidden');
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', initMediaPipe);
+</script>
+{% endblock %}

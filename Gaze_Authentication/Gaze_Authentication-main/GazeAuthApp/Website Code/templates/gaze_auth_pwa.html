@@ -1,0 +1,634 @@
+{% extends 'base_pwa.html' %}
+{% load static %}
+
+{% block title %}Verify Identity - Gaze Authentication{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4 py-8">
+    <div class="w-full max-w-2xl">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-card shadow-2xl mb-4 animate-float">
+                <i class="fas fa-eye text-white text-3xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2">Verify Your Identity</h1>
+            <p class="text-white/60">Hi {{ pending_user.first_name|default:pending_user.username }}, look at the camera to complete login</p>
+        </div>
+
+        <!-- Main Card -->
+        <div class="glass rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Camera Section -->
+            <div class="relative aspect-video bg-gray-900">
+                <video id="webcam" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                <canvas id="overlay" class="absolute inset-0 w-full h-full"></canvas>
+
+                <!-- Status Overlay -->
+                <div id="status-overlay" class="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <div class="text-center text-white">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                        <p id="status-text" class="text-lg">Initializing...</p>
+                    </div>
+                </div>
+
+                <!-- Verification Progress -->
+                <div id="verify-overlay" class="absolute inset-0 flex items-center justify-center bg-black/30 hidden">
+                    <div class="text-center text-white">
+                        <div class="w-24 h-24 rounded-full border-4 border-white/30 border-t-white animate-spin mx-auto mb-4"></div>
+                        <p class="text-lg font-medium">Verifying gaze pattern...</p>
+                    </div>
+                </div>
+
+                <!-- Face Guide -->
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div id="face-guide" class="w-48 h-64 sm:w-56 sm:h-72 border-2 border-dashed border-white/50 rounded-full transition-colors duration-300"></div>
+                </div>
+
+                <!-- Recording Indicator -->
+                <div id="recording-indicator" class="absolute top-4 right-4 hidden">
+                    <div class="bg-red-500 text-white text-sm px-3 py-1 rounded-full flex items-center space-x-2 animate-pulse">
+                        <div class="w-2 h-2 bg-white rounded-full"></div>
+                        <span>Scanning</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls Section -->
+            <div class="p-6">
+                <!-- Progress Bar -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-600 text-sm">Verification Progress</span>
+                        <span id="progress-text" class="text-gray-800 font-medium">0%</span>
+                    </div>
+                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-gradient-card transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Confidence Meter -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-600 text-sm">Match Confidence</span>
+                        <span id="confidence-text" class="text-gray-800 font-medium">--</span>
+                    </div>
+                    <div class="grid grid-cols-10 gap-1">
+                        <div class="h-3 bg-gray-200 rounded" id="conf-1"></div>
+                        <div class="h-3 bg-gray-200 rounded" id="conf-2"></div>
+                        <div class="h-3 bg-gray-200 rounded" id="conf-3"></div>
+                        <div class="h-3 bg-gray-200 rounded" id="conf-4"></div>
+                        <div class="h-3 bg-gray-200 rounded" id="conf-5"></div>
+                        <div class="h-3 bg-gray-200 rounded" id="conf-6"></div>
+                        <div class="h-3 bg-gray-200 rounded" id="conf-7"></div>
+                        <div class="h-3 bg-gray-200 rounded" id="conf-8"></div>
+                        <div class="h-3 bg-gray-200 rounded" id="conf-9"></div>
+                        <div class="h-3 bg-gray-200 rounded" id="conf-10"></div>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button id="start-btn" onclick="startVerification()" class="flex-1 py-3 px-6 bg-gradient-card text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all touch-feedback flex items-center justify-center space-x-2">
+                        <i class="fas fa-eye"></i>
+                        <span>Start Verification</span>
+                    </button>
+                    <a href="/login/" class="flex-1 py-3 px-6 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all touch-feedback flex items-center justify-center space-x-2">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back to Login</span>
+                    </a>
+                </div>
+
+                <!-- Info -->
+                <div class="mt-6 p-4 bg-primary-50 rounded-xl border border-primary-100">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-info-circle text-primary-500 mt-0.5"></i>
+                        <div class="text-sm text-gray-600">
+                            <p class="font-medium text-gray-800 mb-1">How it works</p>
+                            <p>We'll capture your gaze pattern for about 3 seconds and compare it with your enrolled profile. Look naturally at the screen.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cancel Link -->
+        <p class="text-center mt-6 text-white/80">
+            Having trouble?
+            <a href="/login/" class="text-white font-semibold hover:underline ml-1">Try password login</a>
+        </p>
+    </div>
+</div>
+
+<!-- Result Modal -->
+<div id="result-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="relative glass rounded-2xl p-8 max-w-md w-full text-center">
+        <div id="result-icon" class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <!-- Icon inserted by JS -->
+        </div>
+        <h3 id="result-title" class="text-2xl font-bold text-gray-800 mb-2"></h3>
+        <p id="result-message" class="text-gray-600 mb-6"></p>
+        <div id="result-actions" class="flex flex-col sm:flex-row gap-3">
+            <!-- Buttons inserted by JS -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script>
+    let faceMesh;
+    let camera;
+    let isVerifying = false;
+    let frameCount = 0;
+    let features = [];
+    let blinkCount = 0;
+    let fixationCount = 0;
+    let saccadeCount = 0;
+    let lastEAR = 1.0;
+    let eyeWasClosed = false;
+    let gazeHistory = [];
+    let isFixating = false;
+    let fixationStartTime = 0;
+    const REQUIRED_FRAMES = 90; // ~3 seconds at 30fps
+
+    async function initMediaPipe() {
+        const statusOverlay = document.getElementById('status-overlay');
+        const statusText = document.getElementById('status-text');
+
+        faceMesh = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults(onResults);
+
+        const video = document.getElementById('webcam');
+        statusText.textContent = 'Accessing camera...';
+
+        camera = new Camera(video, {
+            onFrame: async () => {
+                await faceMesh.send({image: video});
+            },
+            width: 640,
+            height: 480
+        });
+
+        await camera.start();
+        statusOverlay.classList.add('hidden');
+    }
+
+    function onResults(results) {
+        const canvas = document.getElementById('overlay');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 640;
+        canvas.height = 480;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const faceGuide = document.getElementById('face-guide');
+
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            faceGuide.classList.remove('border-red-500');
+            faceGuide.classList.add('border-green-500');
+
+            const landmarks = results.multiFaceLandmarks[0];
+
+            // Draw eye landmarks
+            const leftEyeIndices = [33, 160, 158, 133, 153, 144];
+            const rightEyeIndices = [362, 385, 387, 263, 373, 380];
+
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+
+            drawEyeContour(ctx, landmarks, leftEyeIndices);
+            drawEyeContour(ctx, landmarks, rightEyeIndices);
+
+            // EAR calculation
+            const leftEAR = calculateEAR(landmarks, leftEyeIndices);
+            const rightEAR = calculateEAR(landmarks, rightEyeIndices);
+            const ear = (leftEAR + rightEAR) / 2;
+
+            // Blink detection
+            if (ear < 0.25 && !eyeWasClosed) {
+                eyeWasClosed = true;
+            } else if (ear >= 0.25 && eyeWasClosed) {
+                eyeWasClosed = false;
+                blinkCount++;
+            }
+
+            // Iris tracking
+            const leftIris = getIrisCenter(landmarks, [468, 469, 470, 471, 472]);
+            const rightIris = getIrisCenter(landmarks, [473, 474, 475, 476, 477]);
+
+            ctx.fillStyle = '#00ff00';
+            ctx.beginPath();
+            ctx.arc(leftIris.x * canvas.width, leftIris.y * canvas.height, 4, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(rightIris.x * canvas.width, rightIris.y * canvas.height, 4, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Gaze tracking
+            const now = Date.now();
+            const gazePoint = {
+                x: (leftIris.x + rightIris.x) / 2,
+                y: (leftIris.y + rightIris.y) / 2,
+                time: now
+            };
+
+            gazeHistory.push(gazePoint);
+            if (gazeHistory.length > 30) gazeHistory.shift();
+
+            // Fixation/saccade detection
+            if (gazeHistory.length >= 5) {
+                const recent = gazeHistory.slice(-5);
+                const dispersion = calculateDispersion(recent);
+
+                if (dispersion < 0.02) {
+                    if (!isFixating) {
+                        isFixating = true;
+                        fixationStartTime = now;
+                    }
+                } else {
+                    if (isFixating && (now - fixationStartTime > 100)) {
+                        fixationCount++;
+                    }
+                    isFixating = false;
+                }
+
+                if (gazeHistory.length >= 2) {
+                    const prev = gazeHistory[gazeHistory.length - 2];
+                    const velocity = calculateVelocity(prev, gazePoint);
+                    if (velocity > 0.3) saccadeCount++;
+                }
+            }
+
+            // Collect features if verifying
+            if (isVerifying) {
+                frameCount++;
+                features.push({
+                    ear: ear,
+                    leftEar: leftEAR,
+                    rightEar: rightEAR,
+                    leftIris: leftIris,
+                    rightIris: rightIris,
+                    gazePoint: gazePoint,
+                    timestamp: now
+                });
+
+                // Update progress
+                const progress = Math.min((frameCount / REQUIRED_FRAMES) * 100, 100);
+                document.getElementById('progress-bar').style.width = `${progress}%`;
+                document.getElementById('progress-text').textContent = `${Math.round(progress)}%`;
+
+                if (frameCount >= REQUIRED_FRAMES) {
+                    finishVerification();
+                }
+            }
+        } else {
+            faceGuide.classList.remove('border-green-500');
+            faceGuide.classList.add('border-red-500');
+        }
+    }
+
+    function calculateEAR(landmarks, eyeIndices) {
+        const p1 = landmarks[eyeIndices[0]];
+        const p2 = landmarks[eyeIndices[1]];
+        const p3 = landmarks[eyeIndices[2]];
+        const p4 = landmarks[eyeIndices[3]];
+        const p5 = landmarks[eyeIndices[4]];
+        const p6 = landmarks[eyeIndices[5]];
+
+        const vertical1 = Math.sqrt(Math.pow(p2.x - p6.x, 2) + Math.pow(p2.y - p6.y, 2));
+        const vertical2 = Math.sqrt(Math.pow(p3.x - p5.x, 2) + Math.pow(p3.y - p5.y, 2));
+        const horizontal = Math.sqrt(Math.pow(p1.x - p4.x, 2) + Math.pow(p1.y - p4.y, 2));
+
+        return (vertical1 + vertical2) / (2.0 * horizontal);
+    }
+
+    function getIrisCenter(landmarks, irisIndices) {
+        let x = 0, y = 0;
+        for (const idx of irisIndices) {
+            x += landmarks[idx].x;
+            y += landmarks[idx].y;
+        }
+        return { x: x / irisIndices.length, y: y / irisIndices.length };
+    }
+
+    function drawEyeContour(ctx, landmarks, indices) {
+        ctx.beginPath();
+        for (let i = 0; i < indices.length; i++) {
+            const point = landmarks[indices[i]];
+            if (i === 0) ctx.moveTo(point.x * 640, point.y * 480);
+            else ctx.lineTo(point.x * 640, point.y * 480);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    }
+
+    function calculateDispersion(points) {
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const p of points) {
+            minX = Math.min(minX, p.x);
+            maxX = Math.max(maxX, p.x);
+            minY = Math.min(minY, p.y);
+            maxY = Math.max(maxY, p.y);
+        }
+        return Math.max(maxX - minX, maxY - minY);
+    }
+
+    function calculateVelocity(p1, p2) {
+        const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        const time = (p2.time - p1.time) / 1000;
+        return time > 0 ? dist / time : 0;
+    }
+
+    function startVerification() {
+        isVerifying = true;
+        frameCount = 0;
+        features = [];
+        blinkCount = 0;
+        fixationCount = 0;
+        saccadeCount = 0;
+
+        document.getElementById('recording-indicator').classList.remove('hidden');
+        document.getElementById('start-btn').disabled = true;
+        document.getElementById('start-btn').classList.add('opacity-50');
+    }
+
+    async function finishVerification() {
+        isVerifying = false;
+        document.getElementById('recording-indicator').classList.add('hidden');
+        document.getElementById('verify-overlay').classList.remove('hidden');
+
+        const aggregateFeatures = calculateAggregateFeatures(features);
+
+        try {
+            const response = await fetch('/api/gaze-auth/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ features: aggregateFeatures })
+            });
+
+            const data = await response.json();
+            document.getElementById('verify-overlay').classList.add('hidden');
+
+            if (data.authenticated) {
+                // Update confidence meter
+                updateConfidenceMeter(data.confidence);
+
+                showResultModal(
+                    true,
+                    'Authentication Successful!',
+                    `Your gaze pattern matched with ${Math.round(data.confidence * 100)}% confidence.`,
+                    data.redirect
+                );
+            } else {
+                updateConfidenceMeter(data.confidence);
+
+                showResultModal(
+                    false,
+                    'Authentication Failed',
+                    data.message || 'Your gaze pattern did not match. Please try again.',
+                    null
+                );
+            }
+        } catch (error) {
+            document.getElementById('verify-overlay').classList.add('hidden');
+            showResultModal(
+                false,
+                'Error',
+                'Network error occurred. Please try again.',
+                null
+            );
+        }
+    }
+
+    function calculateAggregateFeatures(frameFeatures) {
+        if (frameFeatures.length === 0) return {};
+
+        const ears = frameFeatures.map(f => f.ear);
+        const gazeX = frameFeatures.map(f => f.gazePoint.x);
+        const gazeY = frameFeatures.map(f => f.gazePoint.y);
+
+        // ========== PRIMARY BIOMETRIC CONSTANTS (Cannot be faked!) ==========
+
+        // 1. Inter-Pupillary Distance (IPD) - Distance between eye centers
+        // This is a PHYSICAL measurement unique to each person's skull structure
+        const ipds = frameFeatures.map(f => {
+            const leftX = f.leftIris.x;
+            const leftY = f.leftIris.y;
+            const rightX = f.rightIris.x;
+            const rightY = f.rightIris.y;
+            return Math.sqrt(Math.pow(rightX - leftX, 2) + Math.pow(rightY - leftY, 2));
+        });
+
+        // 2. Eye Aspect Ratio (EAR) baseline - Natural eye opening percentage
+        // This is a PHYSICAL measurement unique to each person's eye shape
+        const validEars = ears.filter(e => e > 0.15 && e < 0.45); // Filter out blinks
+
+        // 3. Eye symmetry ratio - How symmetric the eyes are (left vs right)
+        const leftEars = frameFeatures.map(f => f.leftEar || f.ear);
+        const rightEars = frameFeatures.map(f => f.rightEar || f.ear);
+        const eyeSymmetry = leftEars.map((l, i) => Math.min(l, rightEars[i]) / Math.max(l, rightEars[i]));
+
+        // ========== SECONDARY: Behavioral features (shown to user) ==========
+
+        // Calculate velocities between frames
+        const velocities = [];
+        const accelerations = [];
+        for (let i = 1; i < frameFeatures.length; i++) {
+            const prev = frameFeatures[i-1];
+            const curr = frameFeatures[i];
+            const dt = (curr.timestamp - prev.timestamp) / 1000;
+            if (dt > 0) {
+                const dist = Math.sqrt(
+                    Math.pow(curr.gazePoint.x - prev.gazePoint.x, 2) +
+                    Math.pow(curr.gazePoint.y - prev.gazePoint.y, 2)
+                );
+                const velocity = dist / dt;
+                velocities.push(velocity);
+
+                if (velocities.length > 1) {
+                    const prevVelocity = velocities[velocities.length - 2];
+                    accelerations.push(Math.abs(velocity - prevVelocity) / dt);
+                }
+            }
+        }
+
+        const saccadeVelocities = velocities.filter(v => v > 0.3);
+        const saccadeProfile = extractVelocityProfile(saccadeVelocities, 10);
+
+        let pathLength = 0;
+        for (let i = 1; i < frameFeatures.length; i++) {
+            pathLength += Math.sqrt(
+                Math.pow(gazeX[i] - gazeX[i-1], 2) +
+                Math.pow(gazeY[i] - gazeY[i-1], 2)
+            );
+        }
+
+        return {
+            // ===== PRIMARY BIOMETRIC (physical constants - the REAL authentication) =====
+            ipd_mean: average(ipds),
+            ipd_std: standardDeviation(ipds),
+            ear_baseline: validEars.length > 0 ? average(validEars) : average(ears),
+            ear_std: validEars.length > 0 ? standardDeviation(validEars) : standardDeviation(ears),
+            eye_symmetry: average(eyeSymmetry),
+
+            // ===== SECONDARY (behavioral - shown to user for "magic trick") =====
+            avg_ear: average(ears),
+            std_ear: standardDeviation(ears),
+            min_ear: Math.min(...ears),
+            max_ear: Math.max(...ears),
+            blink_count: blinkCount,
+            fixation_count: fixationCount,
+            saccade_count: saccadeCount,
+
+            gaze_dispersion_x: standardDeviation(gazeX),
+            gaze_dispersion_y: standardDeviation(gazeY),
+            avg_gaze_x: average(gazeX),
+            avg_gaze_y: average(gazeY),
+
+            saccade_avg_velocity: saccadeVelocities.length > 0 ? average(saccadeVelocities) : 0,
+            saccade_max_velocity: saccadeVelocities.length > 0 ? Math.max(...saccadeVelocities) : 0,
+            saccade_velocity_std: saccadeVelocities.length > 0 ? standardDeviation(saccadeVelocities) : 0,
+            saccade_velocity_profile: saccadeProfile,
+
+            trajectory_velocity_mean: velocities.length > 0 ? average(velocities) : 0,
+            trajectory_velocity_std: velocities.length > 0 ? standardDeviation(velocities) : 0,
+            trajectory_path_length: pathLength,
+
+            acceleration_mean: accelerations.length > 0 ? average(accelerations) : 0,
+            acceleration_std: accelerations.length > 0 ? standardDeviation(accelerations) : 0,
+
+            // METADATA
+            frame_count: frameFeatures.length,
+            duration_ms: frameFeatures[frameFeatures.length - 1].timestamp - frameFeatures[0].timestamp
+        };
+    }
+
+    function extractVelocityProfile(velocities, profileSize) {
+        // Extract a normalized velocity profile - unique like a fingerprint
+        if (velocities.length === 0) return new Array(profileSize).fill(0);
+
+        const profile = [];
+        const step = Math.max(1, Math.floor(velocities.length / profileSize));
+
+        for (let i = 0; i < profileSize; i++) {
+            const start = i * step;
+            const end = Math.min(start + step, velocities.length);
+            const chunk = velocities.slice(start, end);
+            profile.push(chunk.length > 0 ? average(chunk) : 0);
+        }
+
+        // Normalize to 0-1 range
+        const maxV = Math.max(...profile, 0.001);
+        return profile.map(v => v / maxV);
+    }
+
+    function average(arr) {
+        return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    function standardDeviation(arr) {
+        const avg = average(arr);
+        const squareDiffs = arr.map(value => Math.pow(value - avg, 2));
+        return Math.sqrt(average(squareDiffs));
+    }
+
+    function updateConfidenceMeter(confidence) {
+        const level = Math.round(confidence * 10);
+        document.getElementById('confidence-text').textContent = `${Math.round(confidence * 100)}%`;
+
+        for (let i = 1; i <= 10; i++) {
+            const el = document.getElementById(`conf-${i}`);
+            if (i <= level) {
+                if (level >= 7) el.className = 'h-3 bg-green-500 rounded';
+                else if (level >= 5) el.className = 'h-3 bg-yellow-500 rounded';
+                else el.className = 'h-3 bg-red-500 rounded';
+            } else {
+                el.className = 'h-3 bg-gray-200 rounded';
+            }
+        }
+    }
+
+    function showResultModal(success, title, message, redirect) {
+        const modal = document.getElementById('result-modal');
+        const icon = document.getElementById('result-icon');
+        const titleEl = document.getElementById('result-title');
+        const messageEl = document.getElementById('result-message');
+        const actions = document.getElementById('result-actions');
+
+        if (success) {
+            icon.className = 'w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6';
+            icon.innerHTML = '<i class="fas fa-check text-green-500 text-4xl"></i>';
+        } else {
+            icon.className = 'w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6';
+            icon.innerHTML = '<i class="fas fa-times text-red-500 text-4xl"></i>';
+        }
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+
+        if (success && redirect) {
+            actions.innerHTML = `
+                <a href="${redirect}" class="flex-1 py-3 px-6 bg-gradient-card text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all touch-feedback text-center">
+                    Continue to Dashboard
+                </a>
+            `;
+        } else {
+            actions.innerHTML = `
+                <button onclick="retryVerification()" class="flex-1 py-3 px-6 bg-gradient-card text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all touch-feedback">
+                    Try Again
+                </button>
+                <a href="/login/" class="flex-1 py-3 px-6 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all touch-feedback text-center">
+                    Back to Login
+                </a>
+            `;
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    function retryVerification() {
+        document.getElementById('result-modal').classList.add('hidden');
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('progress-text').textContent = '0%';
+        document.getElementById('confidence-text').textContent = '--';
+
+        for (let i = 1; i <= 10; i++) {
+            document.getElementById(`conf-${i}`).className = 'h-3 bg-gray-200 rounded';
+        }
+
+        document.getElementById('start-btn').disabled = false;
+        document.getElementById('start-btn').classList.remove('opacity-50');
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    document.addEventListener('DOMContentLoaded', initMediaPipe);
+</script>
+{% endblock %}

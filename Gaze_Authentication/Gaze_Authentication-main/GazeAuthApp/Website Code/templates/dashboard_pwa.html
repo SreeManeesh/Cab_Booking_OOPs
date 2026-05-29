@@ -1,0 +1,217 @@
+{% extends 'base_pwa.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Gaze Authentication{% endblock %}
+
+{% block content %}
+<div class="min-h-screen pb-20 lg:pb-8">
+    <div class="px-4 sm:px-6 lg:px-8 pt-6 pb-8">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="mb-6">
+                <h1 class="text-2xl sm:text-3xl font-bold text-white mb-2">Dashboard</h1>
+                <p class="text-white/60">View your authentication statistics and manage your gaze profile</p>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="glass rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <i class="fas fa-chart-bar text-blue-500"></i>
+                        </div>
+                        <span class="text-xs text-gray-400">Total</span>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-800">{{ stats.total_auths|default:0 }}</p>
+                    <p class="text-sm text-gray-500">Authentications</p>
+                </div>
+
+                <div class="glass rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                            <i class="fas fa-percentage text-green-500"></i>
+                        </div>
+                        <span class="text-xs text-gray-400">Rate</span>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-800">{{ stats.success_rate|floatformat:0|default:0 }}%</p>
+                    <p class="text-sm text-gray-500">Success Rate</p>
+                </div>
+
+                <div class="glass rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-lg {% if gaze_profile.is_enrolled %}bg-green-100{% else %}bg-yellow-100{% endif %} flex items-center justify-center">
+                            <i class="fas {% if gaze_profile.is_enrolled %}fa-check text-green-500{% else %}fa-clock text-yellow-500{% endif %}"></i>
+                        </div>
+                        <span class="text-xs text-gray-400">Status</span>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-800">{% if gaze_profile.is_enrolled %}Yes{% else %}No{% endif %}</p>
+                    <p class="text-sm text-gray-500">Enrolled</p>
+                </div>
+
+                <div class="glass rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-lg {% if gaze_profile.use_gaze_auth %}bg-green-100{% else %}bg-gray-100{% endif %} flex items-center justify-center">
+                            <i class="fas fa-shield-alt {% if gaze_profile.use_gaze_auth %}text-green-500{% else %}text-gray-400{% endif %}"></i>
+                        </div>
+                        <span class="text-xs text-gray-400">Protection</span>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-800">{% if gaze_profile.use_gaze_auth %}On{% else %}Off{% endif %}</p>
+                    <p class="text-sm text-gray-500">Gaze Auth</p>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Left Column -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Quick Actions -->
+                    <div class="glass rounded-2xl p-6">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4">Quick Actions</h2>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <a href="/gaze-calibration/" class="flex flex-col items-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors touch-feedback">
+                                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mb-2">
+                                    <i class="fas fa-crosshairs text-white"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">Calibrate</span>
+                            </a>
+                            <a href="/gaze-enrollment/" class="flex flex-col items-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors touch-feedback">
+                                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-2">
+                                    <i class="fas fa-user-plus text-white"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">Enroll</span>
+                            </a>
+                            <a href="/gaze-tracker/" class="flex flex-col items-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors touch-feedback">
+                                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center mb-2">
+                                    <i class="fas fa-eye text-white"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">Test</span>
+                            </a>
+                            <a href="/settings/" class="flex flex-col items-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors touch-feedback">
+                                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center mb-2">
+                                    <i class="fas fa-cog text-white"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">Settings</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Recent Sessions -->
+                    <div class="glass rounded-2xl p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-bold text-gray-800">Recent Sessions</h2>
+                            <span class="text-sm text-gray-400">Last 5</span>
+                        </div>
+
+                        {% if recent_sessions %}
+                        <div class="space-y-3">
+                            {% for session in recent_sessions %}
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-lg {% if session.session_type == 'enrollment' %}bg-blue-100{% elif session.success %}bg-green-100{% else %}bg-red-100{% endif %} flex items-center justify-center">
+                                        <i class="fas {% if session.session_type == 'enrollment' %}fa-user-plus text-blue-500{% elif session.success %}fa-check text-green-500{% else %}fa-times text-red-500{% endif %}"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-gray-800 capitalize">{{ session.session_type }}</p>
+                                        <p class="text-sm text-gray-500">{{ session.started_at|date:"M d, H:i" }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if session.success %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                                        {% if session.success %}Success{% else %}Failed{% endif %}
+                                    </span>
+                                    {% if session.confidence_score %}
+                                    <p class="text-sm text-gray-500 mt-1">{% widthratio session.confidence_score 1 100 %}%</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-8">
+                            <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-history text-gray-400 text-2xl"></i>
+                            </div>
+                            <p class="text-gray-500">No authentication sessions yet</p>
+                            <a href="/gaze-enrollment/" class="inline-flex items-center mt-4 text-primary-500 hover:underline">
+                                <i class="fas fa-plus mr-2"></i>Start your first enrollment
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="space-y-6">
+                    <!-- Profile Details -->
+                    <div class="glass rounded-2xl p-6">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4">Gaze Profile</h2>
+
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-500">Enrollment Date</span>
+                                <span class="font-medium text-gray-800">{{ gaze_profile.enrollment_date|date:"M d, Y"|default:"Not enrolled" }}</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-500">Samples</span>
+                                <span class="font-medium text-gray-800">{{ gaze_profile.enrollment_samples|default:0 }}</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-500">Threshold</span>
+                                <span class="font-medium text-gray-800">{{ gaze_profile.auth_threshold|floatformat:0 }}%</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2">
+                                <span class="text-gray-500">Last Auth</span>
+                                <span class="font-medium text-gray-800">{{ gaze_profile.last_auth_date|date:"M d, H:i"|default:"Never" }}</span>
+                            </div>
+                        </div>
+
+                        {% if not gaze_profile.is_enrolled %}
+                        <a href="/gaze-enrollment/" class="mt-4 w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-card text-white font-medium rounded-xl touch-feedback">
+                            <i class="fas fa-user-plus mr-2"></i>
+                            Enroll Now
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    <!-- Security Status -->
+                    <div class="glass rounded-2xl p-6">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4">Security Status</h2>
+
+                        <div class="space-y-3">
+                            <div class="flex items-center p-3 bg-gray-50 rounded-xl">
+                                <div class="w-8 h-8 rounded-lg {% if user.is_active %}bg-green-100{% else %}bg-red-100{% endif %} flex items-center justify-center mr-3">
+                                    <i class="fas fa-user {% if user.is_active %}text-green-500{% else %}text-red-500{% endif %}"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-700">Account</p>
+                                </div>
+                                <span class="text-xs font-medium {% if user.is_active %}text-green-500{% else %}text-red-500{% endif %}">{% if user.is_active %}Active{% else %}Inactive{% endif %}</span>
+                            </div>
+
+                            <div class="flex items-center p-3 bg-gray-50 rounded-xl">
+                                <div class="w-8 h-8 rounded-lg {% if gaze_profile.is_enrolled %}bg-green-100{% else %}bg-yellow-100{% endif %} flex items-center justify-center mr-3">
+                                    <i class="fas fa-eye {% if gaze_profile.is_enrolled %}text-green-500{% else %}text-yellow-500{% endif %}"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-700">Gaze Profile</p>
+                                </div>
+                                <span class="text-xs font-medium {% if gaze_profile.is_enrolled %}text-green-500{% else %}text-yellow-500{% endif %}">{% if gaze_profile.is_enrolled %}Enrolled{% else %}Pending{% endif %}</span>
+                            </div>
+
+                            <div class="flex items-center p-3 bg-gray-50 rounded-xl">
+                                <div class="w-8 h-8 rounded-lg {% if gaze_profile.use_gaze_auth %}bg-green-100{% else %}bg-gray-100{% endif %} flex items-center justify-center mr-3">
+                                    <i class="fas fa-shield-alt {% if gaze_profile.use_gaze_auth %}text-green-500{% else %}text-gray-400{% endif %}"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-700">2FA Gaze</p>
+                                </div>
+                                <span class="text-xs font-medium {% if gaze_profile.use_gaze_auth %}text-green-500{% else %}text-gray-400{% endif %}">{% if gaze_profile.use_gaze_auth %}Enabled{% else %}Disabled{% endif %}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

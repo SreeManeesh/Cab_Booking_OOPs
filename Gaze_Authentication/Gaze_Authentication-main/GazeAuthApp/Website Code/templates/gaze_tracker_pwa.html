@@ -1,0 +1,477 @@
+{% extends 'base_pwa.html' %}
+{% load static %}
+
+{% block title %}Gaze Tracker Test - Gaze Authentication{% endblock %}
+
+{% block content %}
+<div class="min-h-screen pb-20 lg:pb-8">
+    <div class="px-4 sm:px-6 lg:px-8 pt-6 pb-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- Header -->
+            <div class="mb-6">
+                <div class="flex items-center space-x-3 mb-2">
+                    <a href="/" class="text-white/60 hover:text-white">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-white">Gaze Tracker Test</h1>
+                </div>
+                <p class="text-white/60">Test the real-time eye tracking capabilities</p>
+            </div>
+
+            <!-- Main Content -->
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Camera View -->
+                <div class="lg:col-span-2">
+                    <div class="glass rounded-2xl overflow-hidden">
+                        <div class="relative aspect-video bg-gray-900">
+                            <video id="webcam" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                            <canvas id="overlay" class="absolute inset-0 w-full h-full"></canvas>
+
+                            <!-- Status Overlay -->
+                            <div id="status-overlay" class="absolute inset-0 flex items-center justify-center bg-black/50">
+                                <div class="text-center text-white">
+                                    <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                                    <p id="status-text" class="text-lg">Initializing camera...</p>
+                                </div>
+                            </div>
+
+                            <!-- Face Detection Status -->
+                            <div id="face-indicator" class="absolute top-4 left-4">
+                                <div class="bg-red-500 text-white text-sm px-3 py-1 rounded-full flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-white rounded-full"></div>
+                                    <span id="face-text">No Face</span>
+                                </div>
+                            </div>
+
+                            <!-- Eye Direction Indicator -->
+                            <div id="direction-indicator" class="absolute bottom-4 left-4 bg-black/50 rounded-lg p-3">
+                                <div class="grid grid-cols-3 gap-1 w-24">
+                                    <div id="dir-tl" class="w-7 h-7 rounded bg-gray-600 flex items-center justify-center">
+                                        <i class="fas fa-arrow-up -rotate-45 text-white/50 text-xs"></i>
+                                    </div>
+                                    <div id="dir-t" class="w-7 h-7 rounded bg-gray-600 flex items-center justify-center">
+                                        <i class="fas fa-arrow-up text-white/50 text-xs"></i>
+                                    </div>
+                                    <div id="dir-tr" class="w-7 h-7 rounded bg-gray-600 flex items-center justify-center">
+                                        <i class="fas fa-arrow-up rotate-45 text-white/50 text-xs"></i>
+                                    </div>
+                                    <div id="dir-l" class="w-7 h-7 rounded bg-gray-600 flex items-center justify-center">
+                                        <i class="fas fa-arrow-left text-white/50 text-xs"></i>
+                                    </div>
+                                    <div id="dir-c" class="w-7 h-7 rounded bg-gray-600 flex items-center justify-center">
+                                        <i class="fas fa-circle text-white/50 text-xs"></i>
+                                    </div>
+                                    <div id="dir-r" class="w-7 h-7 rounded bg-gray-600 flex items-center justify-center">
+                                        <i class="fas fa-arrow-right text-white/50 text-xs"></i>
+                                    </div>
+                                    <div id="dir-bl" class="w-7 h-7 rounded bg-gray-600 flex items-center justify-center">
+                                        <i class="fas fa-arrow-down -rotate-45 text-white/50 text-xs"></i>
+                                    </div>
+                                    <div id="dir-b" class="w-7 h-7 rounded bg-gray-600 flex items-center justify-center">
+                                        <i class="fas fa-arrow-down text-white/50 text-xs"></i>
+                                    </div>
+                                    <div id="dir-br" class="w-7 h-7 rounded bg-gray-600 flex items-center justify-center">
+                                        <i class="fas fa-arrow-down rotate-45 text-white/50 text-xs"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Toggle Controls -->
+                        <div class="p-4 bg-gray-50 flex flex-wrap gap-3">
+                            <label class="flex items-center cursor-pointer touch-feedback">
+                                <input type="checkbox" id="show-mesh" checked class="w-4 h-4 text-primary-500 rounded">
+                                <span class="ml-2 text-gray-700 text-sm">Show Face Mesh</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer touch-feedback">
+                                <input type="checkbox" id="show-iris" checked class="w-4 h-4 text-primary-500 rounded">
+                                <span class="ml-2 text-gray-700 text-sm">Show Iris</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer touch-feedback">
+                                <input type="checkbox" id="show-gaze" checked class="w-4 h-4 text-primary-500 rounded">
+                                <span class="ml-2 text-gray-700 text-sm">Show Gaze Ray</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Panel -->
+                <div class="space-y-6">
+                    <!-- Real-time Stats -->
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Real-time Stats</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-gray-500 text-sm">Left Eye EAR</span>
+                                    <span id="left-ear" class="font-mono text-gray-800">0.00</span>
+                                </div>
+                                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                    <div id="left-ear-bar" class="h-full bg-blue-500 transition-all duration-100" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-gray-500 text-sm">Right Eye EAR</span>
+                                    <span id="right-ear" class="font-mono text-gray-800">0.00</span>
+                                </div>
+                                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                    <div id="right-ear-bar" class="h-full bg-blue-500 transition-all duration-100" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="pt-2 border-t border-gray-100">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-500">Blinks</span>
+                                    <span id="blink-count" class="font-bold text-gray-800 text-xl">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gaze Stats -->
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Gaze Analysis</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-500">Fixations</span>
+                                <span id="fixation-count" class="font-bold text-gray-800">0</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-500">Saccades</span>
+                                <span id="saccade-count" class="font-bold text-gray-800">0</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-500">Current State</span>
+                                <span id="gaze-state" class="font-medium text-primary-500">Idle</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2">
+                                <span class="text-gray-500">FPS</span>
+                                <span id="fps" class="font-mono text-gray-800">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gaze Position -->
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Gaze Position</h3>
+                        <div class="aspect-square bg-gray-100 rounded-xl relative overflow-hidden">
+                            <div class="absolute inset-0 grid grid-cols-3 grid-rows-3">
+                                <div class="border-r border-b border-gray-200"></div>
+                                <div class="border-r border-b border-gray-200"></div>
+                                <div class="border-b border-gray-200"></div>
+                                <div class="border-r border-b border-gray-200"></div>
+                                <div class="border-r border-b border-gray-200"></div>
+                                <div class="border-b border-gray-200"></div>
+                                <div class="border-r border-gray-200"></div>
+                                <div class="border-r border-gray-200"></div>
+                                <div></div>
+                            </div>
+                            <div id="gaze-dot" class="absolute w-4 h-4 bg-primary-500 rounded-full shadow-lg transition-all duration-100" style="left: 50%; top: 50%; transform: translate(-50%, -50%)"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script>
+    let faceMesh;
+    let camera;
+
+    // Stats
+    let blinkCount = 0;
+    let fixationCount = 0;
+    let saccadeCount = 0;
+    let eyeWasClosed = false;
+    let gazeHistory = [];
+    let isFixating = false;
+    let fixationStartTime = 0;
+
+    // FPS calculation
+    let frameCount = 0;
+    let lastFpsUpdate = Date.now();
+
+    async function initMediaPipe() {
+        const statusOverlay = document.getElementById('status-overlay');
+        const statusText = document.getElementById('status-text');
+
+        faceMesh = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults(onResults);
+
+        const video = document.getElementById('webcam');
+        statusText.textContent = 'Accessing camera...';
+
+        camera = new Camera(video, {
+            onFrame: async () => {
+                await faceMesh.send({image: video});
+            },
+            width: 640,
+            height: 480
+        });
+
+        await camera.start();
+        statusOverlay.classList.add('hidden');
+    }
+
+    function onResults(results) {
+        const canvas = document.getElementById('overlay');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 640;
+        canvas.height = 480;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Update FPS
+        frameCount++;
+        const now = Date.now();
+        if (now - lastFpsUpdate >= 1000) {
+            document.getElementById('fps').textContent = frameCount;
+            frameCount = 0;
+            lastFpsUpdate = now;
+        }
+
+        const faceIndicator = document.getElementById('face-indicator');
+        const faceText = document.getElementById('face-text');
+
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            faceIndicator.querySelector('div').className = 'bg-green-500 text-white text-sm px-3 py-1 rounded-full flex items-center space-x-2';
+            faceText.textContent = 'Face Detected';
+
+            const landmarks = results.multiFaceLandmarks[0];
+            const showMesh = document.getElementById('show-mesh').checked;
+            const showIris = document.getElementById('show-iris').checked;
+            const showGaze = document.getElementById('show-gaze').checked;
+
+            // Draw face mesh
+            if (showMesh) {
+                ctx.strokeStyle = 'rgba(0, 200, 255, 0.2)';
+                ctx.lineWidth = 0.5;
+                for (let i = 0; i < landmarks.length; i++) {
+                    const x = landmarks[i].x * canvas.width;
+                    const y = landmarks[i].y * canvas.height;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 1, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+            }
+
+            // Eye landmarks
+            const leftEyeIndices = [33, 160, 158, 133, 153, 144];
+            const rightEyeIndices = [362, 385, 387, 263, 373, 380];
+
+            // Draw eyes
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            drawEyeContour(ctx, landmarks, leftEyeIndices);
+            drawEyeContour(ctx, landmarks, rightEyeIndices);
+
+            // Calculate EAR
+            const leftEAR = calculateEAR(landmarks, leftEyeIndices);
+            const rightEAR = calculateEAR(landmarks, rightEyeIndices);
+            const avgEAR = (leftEAR + rightEAR) / 2;
+
+            // Update EAR displays
+            document.getElementById('left-ear').textContent = leftEAR.toFixed(2);
+            document.getElementById('right-ear').textContent = rightEAR.toFixed(2);
+            document.getElementById('left-ear-bar').style.width = `${Math.min(leftEAR * 200, 100)}%`;
+            document.getElementById('right-ear-bar').style.width = `${Math.min(rightEAR * 200, 100)}%`;
+
+            // Blink detection
+            if (avgEAR < 0.25 && !eyeWasClosed) {
+                eyeWasClosed = true;
+            } else if (avgEAR >= 0.25 && eyeWasClosed) {
+                eyeWasClosed = false;
+                blinkCount++;
+                document.getElementById('blink-count').textContent = blinkCount;
+            }
+
+            // Iris tracking
+            const leftIris = getIrisCenter(landmarks, [468, 469, 470, 471, 472]);
+            const rightIris = getIrisCenter(landmarks, [473, 474, 475, 476, 477]);
+
+            if (showIris) {
+                ctx.fillStyle = '#00ff00';
+                ctx.beginPath();
+                ctx.arc(leftIris.x * canvas.width, leftIris.y * canvas.height, 5, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(rightIris.x * canvas.width, rightIris.y * canvas.height, 5, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+
+            // Gaze point
+            const gazeX = (leftIris.x + rightIris.x) / 2;
+            const gazeY = (leftIris.y + rightIris.y) / 2;
+            const gazePoint = { x: gazeX, y: gazeY, time: now };
+
+            gazeHistory.push(gazePoint);
+            if (gazeHistory.length > 30) gazeHistory.shift();
+
+            // Update gaze dot
+            const gazeDot = document.getElementById('gaze-dot');
+            const normalizedX = (gazeX - 0.3) / 0.4; // Normalize to 0-1 range
+            const normalizedY = (gazeY - 0.3) / 0.4;
+            gazeDot.style.left = `${Math.max(0, Math.min(100, normalizedX * 100))}%`;
+            gazeDot.style.top = `${Math.max(0, Math.min(100, normalizedY * 100))}%`;
+
+            // Draw gaze ray
+            if (showGaze) {
+                const faceCenter = { x: landmarks[168].x * canvas.width, y: landmarks[168].y * canvas.height };
+                const gazeTarget = { x: gazeX * canvas.width, y: gazeY * canvas.height };
+
+                ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(faceCenter.x, faceCenter.y);
+                ctx.lineTo(gazeTarget.x + (gazeTarget.x - faceCenter.x) * 3, gazeTarget.y + (gazeTarget.y - faceCenter.y) * 3);
+                ctx.stroke();
+            }
+
+            // Fixation/saccade detection
+            updateGazeState(gazePoint, now);
+
+            // Update direction indicator
+            updateDirectionIndicator(gazeX, gazeY);
+        } else {
+            faceIndicator.querySelector('div').className = 'bg-red-500 text-white text-sm px-3 py-1 rounded-full flex items-center space-x-2';
+            faceText.textContent = 'No Face';
+            document.getElementById('gaze-state').textContent = 'No Face';
+        }
+    }
+
+    function calculateEAR(landmarks, eyeIndices) {
+        const p1 = landmarks[eyeIndices[0]];
+        const p2 = landmarks[eyeIndices[1]];
+        const p3 = landmarks[eyeIndices[2]];
+        const p4 = landmarks[eyeIndices[3]];
+        const p5 = landmarks[eyeIndices[4]];
+        const p6 = landmarks[eyeIndices[5]];
+
+        const vertical1 = Math.sqrt(Math.pow(p2.x - p6.x, 2) + Math.pow(p2.y - p6.y, 2));
+        const vertical2 = Math.sqrt(Math.pow(p3.x - p5.x, 2) + Math.pow(p3.y - p5.y, 2));
+        const horizontal = Math.sqrt(Math.pow(p1.x - p4.x, 2) + Math.pow(p1.y - p4.y, 2));
+
+        return (vertical1 + vertical2) / (2.0 * horizontal);
+    }
+
+    function getIrisCenter(landmarks, irisIndices) {
+        let x = 0, y = 0;
+        for (const idx of irisIndices) {
+            x += landmarks[idx].x;
+            y += landmarks[idx].y;
+        }
+        return { x: x / irisIndices.length, y: y / irisIndices.length };
+    }
+
+    function drawEyeContour(ctx, landmarks, indices) {
+        ctx.beginPath();
+        for (let i = 0; i < indices.length; i++) {
+            const point = landmarks[indices[i]];
+            if (i === 0) ctx.moveTo(point.x * 640, point.y * 480);
+            else ctx.lineTo(point.x * 640, point.y * 480);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    }
+
+    function updateGazeState(gazePoint, now) {
+        const stateEl = document.getElementById('gaze-state');
+
+        if (gazeHistory.length >= 5) {
+            const recent = gazeHistory.slice(-5);
+            const dispersion = calculateDispersion(recent);
+
+            if (dispersion < 0.02) {
+                if (!isFixating) {
+                    isFixating = true;
+                    fixationStartTime = now;
+                }
+                stateEl.textContent = 'Fixating';
+                stateEl.className = 'font-medium text-green-500';
+            } else {
+                if (isFixating && (now - fixationStartTime > 100)) {
+                    fixationCount++;
+                    document.getElementById('fixation-count').textContent = fixationCount;
+                }
+                isFixating = false;
+
+                if (gazeHistory.length >= 2) {
+                    const prev = gazeHistory[gazeHistory.length - 2];
+                    const velocity = calculateVelocity(prev, gazePoint);
+                    if (velocity > 0.3) {
+                        saccadeCount++;
+                        document.getElementById('saccade-count').textContent = saccadeCount;
+                        stateEl.textContent = 'Saccade';
+                        stateEl.className = 'font-medium text-yellow-500';
+                    } else {
+                        stateEl.textContent = 'Moving';
+                        stateEl.className = 'font-medium text-blue-500';
+                    }
+                }
+            }
+        }
+    }
+
+    function calculateDispersion(points) {
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const p of points) {
+            minX = Math.min(minX, p.x);
+            maxX = Math.max(maxX, p.x);
+            minY = Math.min(minY, p.y);
+            maxY = Math.max(maxY, p.y);
+        }
+        return Math.max(maxX - minX, maxY - minY);
+    }
+
+    function calculateVelocity(p1, p2) {
+        const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        const time = (p2.time - p1.time) / 1000;
+        return time > 0 ? dist / time : 0;
+    }
+
+    function updateDirectionIndicator(gazeX, gazeY) {
+        // Reset all directions
+        const directions = ['tl', 't', 'tr', 'l', 'c', 'r', 'bl', 'b', 'br'];
+        directions.forEach(d => {
+            const el = document.getElementById(`dir-${d}`);
+            el.className = 'w-7 h-7 rounded bg-gray-600 flex items-center justify-center';
+        });
+
+        // Determine direction
+        let direction = 'c';
+        if (gazeX < 0.4) {
+            if (gazeY < 0.4) direction = 'tl';
+            else if (gazeY > 0.6) direction = 'bl';
+            else direction = 'l';
+        } else if (gazeX > 0.6) {
+            if (gazeY < 0.4) direction = 'tr';
+            else if (gazeY > 0.6) direction = 'br';
+            else direction = 'r';
+        } else {
+            if (gazeY < 0.4) direction = 't';
+            else if (gazeY > 0.6) direction = 'b';
+            else direction = 'c';
+        }
+
+        // Highlight active direction
+        const activeEl = document.getElementById(`dir-${direction}`);
+        activeEl.className = 'w-7 h-7 rounded bg-primary-500 flex items-center justify-center';
+    }
+
+    document.addEventListener('DOMContentLoaded', initMediaPipe);
+</script>
+{% endblock %}

@@ -1,0 +1,418 @@
+{% extends 'base_pwa.html' %}
+{% load static %}
+
+{% block title %}Calibration - Gaze Authentication{% endblock %}
+
+{% block content %}
+<div class="min-h-screen pb-20 lg:pb-8">
+    <div class="px-4 sm:px-6 lg:px-8 pt-6 pb-8">
+        <div class="max-w-5xl mx-auto">
+            <!-- Header -->
+            <div class="mb-6">
+                <div class="flex items-center space-x-3 mb-2">
+                    <a href="/" class="text-white/60 hover:text-white">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-white">Gaze Calibration</h1>
+                </div>
+                <p class="text-white/60">Calibrate the eye tracker for better accuracy</p>
+            </div>
+
+            <!-- Main Content -->
+            <div class="grid lg:grid-cols-4 gap-6">
+                <!-- Calibration Area -->
+                <div class="lg:col-span-3">
+                    <div class="glass rounded-2xl overflow-hidden">
+                        <!-- Calibration Canvas -->
+                        <div id="calibration-area" class="relative aspect-video bg-gray-900">
+                            <video id="webcam" autoplay playsinline muted class="absolute bottom-4 right-4 w-32 h-24 rounded-lg border-2 border-white/20 object-cover z-10"></video>
+                            <canvas id="calibration-canvas" class="w-full h-full"></canvas>
+
+                            <!-- Status Overlay -->
+                            <div id="status-overlay" class="absolute inset-0 flex items-center justify-center bg-black/50">
+                                <div class="text-center text-white">
+                                    <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                                    <p id="status-text" class="text-lg">Initializing camera...</p>
+                                </div>
+                            </div>
+
+                            <!-- Ready Overlay -->
+                            <div id="ready-overlay" class="absolute inset-0 flex items-center justify-center bg-black/70 hidden">
+                                <div class="text-center text-white p-8">
+                                    <div class="w-20 h-20 rounded-full bg-gradient-card flex items-center justify-center mx-auto mb-6">
+                                        <i class="fas fa-crosshairs text-3xl"></i>
+                                    </div>
+                                    <h3 class="text-2xl font-bold mb-4">Ready to Calibrate</h3>
+                                    <p class="text-white/70 mb-6 max-w-md">
+                                        Look at each point as it appears on screen. Try to focus on the center of each target.
+                                    </p>
+                                    <button onclick="startCalibration()" class="py-3 px-8 bg-gradient-card text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all touch-feedback">
+                                        Start Calibration
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Complete Overlay -->
+                            <div id="complete-overlay" class="absolute inset-0 flex items-center justify-center bg-black/70 hidden">
+                                <div class="text-center text-white p-8">
+                                    <div class="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-6">
+                                        <i class="fas fa-check text-3xl"></i>
+                                    </div>
+                                    <h3 class="text-2xl font-bold mb-2">Calibration Complete!</h3>
+                                    <p id="accuracy-text" class="text-white/70 mb-6">Accuracy: 95%</p>
+                                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                                        <button onclick="startCalibration()" class="py-3 px-6 bg-gray-600 text-white font-semibold rounded-xl hover:bg-gray-700 transition-all touch-feedback">
+                                            Recalibrate
+                                        </button>
+                                        <a href="/gaze-enrollment/" class="py-3 px-6 bg-gradient-card text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all touch-feedback">
+                                            Continue to Enrollment
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="p-4 bg-gray-50">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-gray-600 text-sm">Calibration Progress</span>
+                                <span id="progress-text" class="text-gray-800 font-medium">0 / 9 points</span>
+                            </div>
+                            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div id="progress-bar" class="h-full bg-gradient-card transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Side Panel -->
+                <div class="space-y-6">
+                    <!-- Instructions Card -->
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">How to Calibrate</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-start space-x-3">
+                                <div class="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+                                    <span class="text-primary-500 font-bold">1</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-800">Position Your Face</p>
+                                    <p class="text-gray-500 text-sm">Ensure your face is clearly visible in the camera preview</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+                                    <span class="text-primary-500 font-bold">2</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-800">Follow the Target</p>
+                                    <p class="text-gray-500 text-sm">Look directly at each target point as it appears</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+                                    <span class="text-primary-500 font-bold">3</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-800">Stay Still</p>
+                                    <p class="text-gray-500 text-sm">Keep your head relatively still, only move your eyes</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Stats -->
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Live Stats</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-500">Face Detected</span>
+                                <span id="face-status" class="font-medium text-red-500">No</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-500">Current Point</span>
+                                <span id="current-point" class="font-medium text-gray-800">--</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2">
+                                <span class="text-gray-500">Accuracy</span>
+                                <span id="live-accuracy" class="font-medium text-gray-800">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tips Card -->
+                    <div class="glass rounded-2xl p-6 bg-yellow-50/50 border border-yellow-100">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-lightbulb text-yellow-600"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800">Pro Tip</h4>
+                                <p class="text-gray-600 text-sm mt-1">
+                                    Good lighting and a consistent viewing distance will improve calibration accuracy.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script>
+    let faceMesh;
+    let camera;
+    let isCalibrating = false;
+    let currentPointIndex = 0;
+    let calibrationData = [];
+    let gazeHistory = [];
+    let faceDetected = false;
+
+    // 9-point calibration grid
+    const calibrationPoints = [
+        { x: 0.1, y: 0.1 },  // Top-left
+        { x: 0.5, y: 0.1 },  // Top-center
+        { x: 0.9, y: 0.1 },  // Top-right
+        { x: 0.1, y: 0.5 },  // Middle-left
+        { x: 0.5, y: 0.5 },  // Center
+        { x: 0.9, y: 0.5 },  // Middle-right
+        { x: 0.1, y: 0.9 },  // Bottom-left
+        { x: 0.5, y: 0.9 },  // Bottom-center
+        { x: 0.9, y: 0.9 },  // Bottom-right
+    ];
+
+    let pointTimer = null;
+    let currentPointData = [];
+
+    async function initMediaPipe() {
+        const statusOverlay = document.getElementById('status-overlay');
+        const statusText = document.getElementById('status-text');
+
+        faceMesh = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults(onResults);
+
+        const video = document.getElementById('webcam');
+        statusText.textContent = 'Accessing camera...';
+
+        camera = new Camera(video, {
+            onFrame: async () => {
+                await faceMesh.send({image: video});
+            },
+            width: 640,
+            height: 480
+        });
+
+        await camera.start();
+        statusOverlay.classList.add('hidden');
+        document.getElementById('ready-overlay').classList.remove('hidden');
+    }
+
+    function onResults(results) {
+        const faceStatus = document.getElementById('face-status');
+
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            faceDetected = true;
+            faceStatus.textContent = 'Yes';
+            faceStatus.className = 'font-medium text-green-500';
+
+            const landmarks = results.multiFaceLandmarks[0];
+
+            // Get iris positions
+            const leftIris = getIrisCenter(landmarks, [468, 469, 470, 471, 472]);
+            const rightIris = getIrisCenter(landmarks, [473, 474, 475, 476, 477]);
+
+            const gazePoint = {
+                x: (leftIris.x + rightIris.x) / 2,
+                y: (leftIris.y + rightIris.y) / 2,
+                time: Date.now()
+            };
+
+            gazeHistory.push(gazePoint);
+            if (gazeHistory.length > 30) gazeHistory.shift();
+
+            if (isCalibrating) {
+                currentPointData.push(gazePoint);
+            }
+        } else {
+            faceDetected = false;
+            faceStatus.textContent = 'No';
+            faceStatus.className = 'font-medium text-red-500';
+        }
+
+        // Draw calibration point if calibrating
+        if (isCalibrating) {
+            drawCalibrationPoint();
+        }
+    }
+
+    function getIrisCenter(landmarks, irisIndices) {
+        let x = 0, y = 0;
+        for (const idx of irisIndices) {
+            x += landmarks[idx].x;
+            y += landmarks[idx].y;
+        }
+        return { x: x / irisIndices.length, y: y / irisIndices.length };
+    }
+
+    function drawCalibrationPoint() {
+        const canvas = document.getElementById('calibration-canvas');
+        const ctx = canvas.getContext('2d');
+        const area = document.getElementById('calibration-area');
+
+        canvas.width = area.clientWidth;
+        canvas.height = area.clientHeight;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (currentPointIndex < calibrationPoints.length) {
+            const point = calibrationPoints[currentPointIndex];
+            const x = point.x * canvas.width;
+            const y = point.y * canvas.height;
+
+            // Outer circle
+            ctx.beginPath();
+            ctx.arc(x, y, 30, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fill();
+
+            // Inner target
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, 2 * Math.PI);
+            ctx.fillStyle = '#4F46E5';
+            ctx.fill();
+
+            // Center dot
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fill();
+
+            // Animate pulsing
+            const pulse = Math.sin(Date.now() / 200) * 5 + 35;
+            ctx.beginPath();
+            ctx.arc(x, y, pulse, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(79, 70, 229, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+    }
+
+    function startCalibration() {
+        isCalibrating = true;
+        currentPointIndex = 0;
+        calibrationData = [];
+
+        document.getElementById('ready-overlay').classList.add('hidden');
+        document.getElementById('complete-overlay').classList.add('hidden');
+
+        showNextPoint();
+    }
+
+    function showNextPoint() {
+        if (currentPointIndex >= calibrationPoints.length) {
+            finishCalibration();
+            return;
+        }
+
+        currentPointData = [];
+        document.getElementById('current-point').textContent = `${currentPointIndex + 1} / ${calibrationPoints.length}`;
+        document.getElementById('progress-text').textContent = `${currentPointIndex} / 9 points`;
+        document.getElementById('progress-bar').style.width = `${(currentPointIndex / 9) * 100}%`;
+
+        // Collect data for 2 seconds per point
+        pointTimer = setTimeout(() => {
+            // Calculate average gaze position for this point
+            if (currentPointData.length > 0) {
+                const avgX = currentPointData.reduce((sum, p) => sum + p.x, 0) / currentPointData.length;
+                const avgY = currentPointData.reduce((sum, p) => sum + p.y, 0) / currentPointData.length;
+
+                calibrationData.push({
+                    target: calibrationPoints[currentPointIndex],
+                    measured: { x: avgX, y: avgY },
+                    samples: currentPointData.length
+                });
+            }
+
+            currentPointIndex++;
+            showNextPoint();
+        }, 2000);
+    }
+
+    async function finishCalibration() {
+        isCalibrating = false;
+
+        // Calculate accuracy
+        let totalError = 0;
+        for (const data of calibrationData) {
+            const error = Math.sqrt(
+                Math.pow(data.target.x - data.measured.x, 2) +
+                Math.pow(data.target.y - data.measured.y, 2)
+            );
+            totalError += error;
+        }
+        const avgError = totalError / calibrationData.length;
+        const accuracy = Math.max(0, Math.min(100, (1 - avgError * 2) * 100));
+
+        document.getElementById('accuracy-text').textContent = `Accuracy: ${Math.round(accuracy)}%`;
+        document.getElementById('live-accuracy').textContent = `${Math.round(accuracy)}%`;
+        document.getElementById('progress-text').textContent = '9 / 9 points';
+        document.getElementById('progress-bar').style.width = '100%';
+
+        // Save calibration data
+        try {
+            await fetch('/api/save-calibration/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    accuracy: accuracy,
+                    calibrationData: calibrationData
+                })
+            });
+        } catch (error) {
+            console.error('Failed to save calibration:', error);
+        }
+
+        // Clear canvas and show complete overlay
+        const canvas = document.getElementById('calibration-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        document.getElementById('complete-overlay').classList.remove('hidden');
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    document.addEventListener('DOMContentLoaded', initMediaPipe);
+</script>
+{% endblock %}
